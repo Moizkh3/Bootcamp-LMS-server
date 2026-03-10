@@ -133,7 +133,7 @@ export async function login(req, res) {
 
 export const getUsers = async (req, res) => {
   try {
-    const { role, bootcampId, domainId, status, startDate, endDate } = req.query;
+    const { role, bootcampId, domainId, status, startDate, endDate, studentStatus, teacherStatus } = req.query;
 
     let filter = {};
 
@@ -142,7 +142,10 @@ export const getUsers = async (req, res) => {
     }
 
     if (bootcampId) {
-      filter.bootcampId = bootcampId;
+      filter.$or = [
+        { studentBootcampId: bootcampId },
+        { teacherBootcampIds: bootcampId }
+      ];
     }
 
     if (domainId) {
@@ -150,7 +153,18 @@ export const getUsers = async (req, res) => {
     }
 
     if (status) {
-      filter.status = status;
+      filter.$or = [
+        { studentStatus: status },
+        { teacherStatus: status }
+      ];
+    }
+
+    if (studentStatus) {
+      filter.studentStatus = studentStatus;
+    }
+
+    if (teacherStatus) {
+      filter.teacherStatus = teacherStatus;
     }
 
     if (startDate || endDate) {
@@ -166,7 +180,8 @@ export const getUsers = async (req, res) => {
     }
 
     const users = await User.find(filter)
-      .populate("bootcampId", "name")
+      .populate("studentBootcampId", "name")
+      .populate("teacherBootcampIds", "name")
       .populate("domainId", "name")
       .sort({ createdAt: -1 });
 
@@ -186,7 +201,8 @@ export const getUsers = async (req, res) => {
 export const getSingleUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
-      .populate("bootcampId", "name")
+      .populate("studentBootcampId", "name")
+      .populate("teacherBootcampIds", "name")
       .populate("domainId", "name");
 
     if (!user) {
@@ -332,6 +348,22 @@ export async function changePassword(req, res) {
   }
 }
 
+export const getProfile = async (req, res) => {
+  try {
+    const user = req.user.toObject();
+    delete user.password;
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export async function sentOtpForResetPassword(req, res) {
   try {
 
@@ -429,7 +461,7 @@ export async function verifyOtp(req, res) {
 
 export const register = async (req, res) => {
   try {
-    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, password } = req.body;
+    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, password, studentStatus, teacherStatus } = req.body;
     const userPassword = password || "BMS@2024";
 
     if (!name || !email || !role) {
@@ -470,7 +502,12 @@ export const register = async (req, res) => {
       name,
       email,
       password: hashed,
-      role
+      role,
+      studentBootcampId: role === 'student' ? studentBootcampId : undefined,
+      teacherBootcampIds: role === 'teacher' ? teacherBootcampIds : [],
+      domainId,
+      studentStatus: role === 'student' ? (studentStatus || 'enrolled') : undefined,
+      teacherStatus: role === 'teacher' ? (teacherStatus || 'active') : undefined,
     });
 
     let util = await utils.findOne();

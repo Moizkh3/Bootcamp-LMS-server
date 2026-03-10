@@ -20,6 +20,7 @@ import studentDashboardRouter from "./routes/studentDashboardRouter.js";
 import bootcampRouter from "./routes/bootcampRouter.js";
 import teacherRouter from "./routes/teacherRoutes.js";
 import progressRouter from "./routes/progressRouter.js";
+import announcementRouter from "./routes/announcementRouter.js";
 const app = express();
 
 const corsOptions = {
@@ -55,6 +56,7 @@ app.use("/teacher", teacherRouter)
 
 // currently working auth APIs
 app.use('/bootcamp', bootcampRouter)
+app.use('/announcement', announcementRouter)
 
 // Error handling middleware
 app.use((err, req, res, next) => {

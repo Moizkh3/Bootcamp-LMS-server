@@ -1,4 +1,5 @@
 import Bootcamp from "../models/bootcampModel.js";
+import User from "../models/user.js";
 
 export async function createBootcamp(req, res) {
     try {
@@ -81,10 +82,18 @@ export async function getBootcampById(req, res) {
             })
         }
 
+        const studentCount = await User.countDocuments({
+            role: 'student',
+            studentBootcampId: req.params.id
+        });
+
         res.status(200).json({
             success: true,
             message: 'Bootcamp fetched successfully',
-            data: bootcamp
+            data: {
+                ...bootcamp.toObject(),
+                studentCount
+            }
         })
 
     } catch (error) {

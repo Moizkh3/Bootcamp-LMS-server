@@ -6,14 +6,14 @@ const announcementSchema = new mongoose.Schema({
   },
 
   description: {
-    type : String,
-    required : ture
+    type: String,
+    required: true
   },
 
   bootcampId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Bootcamp",
-    required : true
+    required: true
   },
 
   domainId: {

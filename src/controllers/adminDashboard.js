@@ -32,7 +32,7 @@ export async function getKpis(req, res) {
                 {
                   $and: [
                     { $eq: ["$role", "teacher"] },
-                    { $eq: ["$teacherStatus", "enrolled"] },
+                    { $eq: ["$teacherStatus", "active"] },
                   ],
                 },
                 1,
