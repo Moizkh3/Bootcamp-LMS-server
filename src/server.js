@@ -57,10 +57,6 @@ app.use("/teacher", teacherRouter)
 app.use('/bootcamp', bootcampRouter)
 
 
-// currently working auth APIs
-app.use('/bootcamp', bootcampRouter)
-
-
 // Database connection
 connectDB()
   .then(() => {
