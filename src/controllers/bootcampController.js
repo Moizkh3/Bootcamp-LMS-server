@@ -1,5 +1,6 @@
 import Bootcamp from "../models/bootcampModel.js";
 import User from "../models/user.js";
+import Domain from "../models/domainSchema.js";
 
 export async function createBootcamp(req, res) {
     try {
@@ -58,10 +59,27 @@ export async function getAllBootcamps(req, res) {
 
 
         let bootcamps = await Bootcamp.find(filter);
+
+        // Get student and domain counts for each bootcamp
+        const bootcampsWithCounts = await Promise.all(bootcamps.map(async (bootcamp) => {
+            const studentCount = await User.countDocuments({
+                role: 'student',
+                studentBootcampId: bootcamp._id
+            });
+            const domainCount = await Domain.countDocuments({
+                bootcamp: bootcamp._id
+            });
+            return {
+                ...bootcamp.toObject(),
+                studentCount,
+                domainCount
+            };
+        }));
+
         res.status(200).json({
             success: true,
             message: 'Bootcamps fetched successfully',
-            data: bootcamps
+            data: bootcampsWithCounts
         })
     } catch (error) {
         res.status(500).json({
@@ -74,7 +92,7 @@ export async function getAllBootcamps(req, res) {
 
 export async function getBootcampById(req, res) {
     try {
-        let bootcamp = await Bootcamp.findById(req.params.id);
+        let bootcamp = await Bootcamp.findById(req.params.id).populate('domains');
         if (!bootcamp) {
             return res.status(404).json({
                 success: false,
@@ -87,11 +105,15 @@ export async function getBootcampById(req, res) {
             studentBootcampId: req.params.id
         });
 
+        // Also fetch domains for this bootcamp if not already populated correctly
+        const domains = await Domain.find({ bootcamp: req.params.id });
+
         res.status(200).json({
             success: true,
             message: 'Bootcamp fetched successfully',
             data: {
                 ...bootcamp.toObject(),
+                domains,
                 studentCount
             }
         })

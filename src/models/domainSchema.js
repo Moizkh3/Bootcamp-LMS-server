@@ -12,7 +12,8 @@ const domainSchema = new mongoose.Schema({
         trim: true
     },
     bootcamp: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Bootcamp',
         required: true
     },
     status: {

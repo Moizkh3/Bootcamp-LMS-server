@@ -250,7 +250,11 @@ export const deleteUser = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+    if (updateData.domainId === "") updateData.domainId = null;
+    if (updateData.studentBootcampId === "") updateData.studentBootcampId = null;
+
+    const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
 
@@ -503,9 +507,9 @@ export const register = async (req, res) => {
       email,
       password: hashed,
       role,
-      studentBootcampId: role === 'student' ? studentBootcampId : undefined,
+      studentBootcampId: (role === 'student' && studentBootcampId !== "") ? studentBootcampId : undefined,
       teacherBootcampIds: role === 'teacher' ? teacherBootcampIds : [],
-      domainId,
+      domainId: domainId === "" ? null : domainId,
       studentStatus: role === 'student' ? (studentStatus || 'enrolled') : undefined,
       teacherStatus: role === 'teacher' ? (teacherStatus || 'active') : undefined,
     });
