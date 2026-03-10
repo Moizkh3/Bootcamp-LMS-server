@@ -7,9 +7,10 @@ import sendEmail from "../utils/sendMail.js";
 import utils from "../models/utilsSchema.js";
 
 let cookiesConfig = {
-  // httpOnly: true,
+  httpOnly: true,
   maxAge: 7 * 24 * 60 * 60 * 1000,
   sameSite: "none",
+  secure: true, // Required for sameSite: "none"
 };
 
 // export const createUser = async (req, res) => {

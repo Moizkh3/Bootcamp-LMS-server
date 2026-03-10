@@ -2,33 +2,19 @@ import Bootcamp from "../models/bootcampModel.js";
 
 export async function createBootcamp(req, res) {
     try {
-        let { name, description, startDate, endDate, domains, teachers } = req.body;
+        let { name, description, startDate, endDate, domains = [], teachers = [] } = req.body;
 
-        if (!domains || !name || !startDate || !endDate || !teachers) {
+        if (!name || !startDate || !endDate) {
             return res.status(400).json({
                 success: false,
-                message: 'Required fields missing'
+                message: 'Required fields missing: name, startDate, and endDate are required'
             })
         }
 
-        if (startDate > endDate) {
+        if (new Date(startDate) > new Date(endDate)) {
             return res.status(400).json({
                 success: false,
                 message: 'Start date cannot be greater than end date'
-            })
-        }
-
-        if (domains.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Domain is required'
-            })
-        }
-
-        if (teachers.length === 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Teacher is required'
             })
         }
 
