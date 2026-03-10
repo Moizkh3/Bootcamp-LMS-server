@@ -23,15 +23,15 @@ import progressRouter from "./routes/progressRouter.js";
 const app = express();
 
 const corsOptions = {
-  origin: true,
+  origin: ["http://localhost:5173", "https://bootcamp-tracker-2-client.vercel.app"], // Add your frontend production URL here later
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 };
 
 app.use(cors(corsOptions));
 app.use(express.json());
-
 app.use(cookieParser());
-app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
@@ -56,6 +56,20 @@ app.use("/teacher", teacherRouter)
 // currently working auth APIs
 app.use('/bootcamp', bootcampRouter)
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Global Error Handler:", err);
+
+  // Ensure CORS headers even on error
+  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || "Internal Server Error",
+    error: process.env.NODE_ENV === "development" ? err.stack : undefined
+  });
+});
 
 // Database connection
 connectDB()
