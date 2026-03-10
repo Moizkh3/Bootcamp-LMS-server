@@ -36,7 +36,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 // app.use("/submission", checkAuth ,submissionRoutes);
-app.use("/user", checkAuth ,userRouter);
+app.use("/user", checkAuth, userRouter);
 app.use("/student", studentRouter);
 app.use("/progress", progressRouter);
 
@@ -45,21 +45,34 @@ app.get("/", (req, res) => {
   res.json({ message: "Server Working!" });
 });
 
-app.use('/user' , checkAuth ,  userRouter);
-app.use('/domain' , checkAuth , checkAdmin , domainRouter);
-app.use('/admin-dashboard' , checkAuth , checkAdmin , adminDashboardRouter);
-app.use('/student-dashboard' , checkAuth , checkStudent , studentDashboardRouter);
-app.use('/auth' , authRouter);
+app.use('/user', checkAuth, userRouter);
+app.use('/domain', checkAuth, checkAdmin, domainRouter);
+app.use('/admin-dashboard', checkAuth, checkAdmin, adminDashboardRouter);
+app.use('/student-dashboard', checkAuth, checkStudent, studentDashboardRouter);
+app.use('/auth', authRouter);
 app.use("/teacher", teacherRouter)
 
 
 // currently working auth APIs
-app.use('/bootcamp' , bootcampRouter)
+app.use('/bootcamp', bootcampRouter)
 
 
+// currently working auth APIs
+app.use('/bootcamp', bootcampRouter)
+
+
+// Database connection
 connectDB()
-.then(()=>{
-    app.listen(PORT, () =>{
-        console.log(`server is running on http://localhost:${PORT}`)
-    })
-})
+  .then(() => {
+    // Only start the server if not running on Vercel
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, () => {
+        console.log(`server is running on http://localhost:${PORT}`);
+      });
+    }
+  })
+  .catch((err) => {
+    console.error("Failed to connect to DB:", err);
+  });
+
+export default app;
