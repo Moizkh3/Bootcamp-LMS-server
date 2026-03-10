@@ -475,7 +475,13 @@ export const register = async (req, res) => {
 
     let util = await utils.findOne();
 
-    util.rollNo = util.rollNo + 1;
+    if (!util) {
+      // Initialize utils if not exists
+      util = new utils({ rollNo: 1000 });
+    } else {
+      util.rollNo = util.rollNo + 1;
+    }
+
     await util.save();
 
     newUser.rollNo = util.rollNo;
