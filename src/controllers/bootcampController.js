@@ -2,9 +2,9 @@ import Bootcamp from "../models/bootcampModel.js";
 
 export async function createBootcamp(req, res) {
     try {
-        let { name, description, startDate, endDate } = req.body;
+        let { name, description, startDate, endDate, domains, teachers } = req.body;
 
-        if (!domains || !name || !startDate || !endDate ) {
+        if (!domains || !name || !startDate || !endDate || !teachers) {
             return res.status(400).json({
                 success: false,
                 message: 'Required fields missing'
@@ -18,14 +18,14 @@ export async function createBootcamp(req, res) {
             })
         }
 
-        if(domains.length === 0){
+        if (domains.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'Domain is required'
             })
         }
 
-        if(teachers.length === 0){
+        if (teachers.length === 0) {
             return res.status(400).json({
                 success: false,
                 message: 'Teacher is required'
@@ -37,15 +37,17 @@ export async function createBootcamp(req, res) {
             name,
             description,
             startDate,
-            endDate
+            endDate,
+            domains,
+            teachers
         });
 
-        let savedDomain = await newbootcamp.save();
+        let savedBootcamp = await newbootcamp.save();
 
         res.status(201).json({
             success: true,
             message: 'Bootcamp created successfully',
-            data: savedDomain
+            data: savedBootcamp
         })
 
 
@@ -80,7 +82,7 @@ export async function getAllBootcamps(req, res) {
             message: error.message
         })
     }
-}  
+}
 
 
 export async function getBootcampById(req, res) {
@@ -107,7 +109,7 @@ export async function getBootcampById(req, res) {
     }
 }
 
-export async function deleteBootcamp(req , res) {
+export async function deleteBootcamp(req, res) {
     try {
         let bootcamp = await Bootcamp.findByIdAndDelete(req.params.id);
         if (!bootcamp) {
@@ -115,7 +117,7 @@ export async function deleteBootcamp(req , res) {
                 success: false,
                 message: 'Bootcamp not found'
             })
-        
+
         }
 
         res.status(200).json({
@@ -131,11 +133,11 @@ export async function deleteBootcamp(req , res) {
     }
 }
 
-export async function editBootcamp(req , res) {
+export async function editBootcamp(req, res) {
     try {
-        let { name , description , startDate , endDate , status} = req.body;
+        let { name, description, startDate, endDate, status } = req.body;
 
-        if(!name || !description || !startDate || !endDate || !status){
+        if (!name || !description || !startDate || !endDate || !status) {
             return res.status(400).json({
                 success: false,
                 message: "No updates required"
@@ -145,7 +147,7 @@ export async function editBootcamp(req , res) {
         let bootcamp = await Bootcamp.findById(req.params.id);
 
 
-        if (!bootcamp){
+        if (!bootcamp) {
             return res.status(404).json({
                 success: false,
                 message: 'Bootcamp not found'

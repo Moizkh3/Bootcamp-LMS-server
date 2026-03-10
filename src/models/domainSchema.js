@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const domainSchema = new mongoose.Schema({
-    title: {
+    name: {
         type: String,
         required: true,
         trim: true
@@ -11,7 +11,33 @@ const domainSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    bootcamp: {
+        type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        default: 'Active',
+        enum: ['Active', 'Inactive', 'Archived']
+    },
+    type: {
+        type: String,
+        default: 'Core Track',
+        enum: ['Core Track', 'Specialized', 'Elective']
+    },
+    mentorName: {
+        type: String,
+        trim: true
+    },
+    mentorAvatar: {
+        type: String,
+        trim: true
+    },
+    studentsCount: {
+        type: Number,
+        default: 0
+    }
 
-} , { timestamps: true });
+}, { timestamps: true });
 
-export default mongoose.model('Domain', domainSchema );
+export default mongoose.model('Domain', domainSchema);

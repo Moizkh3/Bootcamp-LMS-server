@@ -60,6 +60,29 @@ export async function getProfile(req, res) {
     }
 }
 
+export async function getUsersByRole(req, res) {
+    try {
+        const { role } = req.query;
+        if (!role) {
+            return res.status(400).json({
+                success: false,
+                message: 'Role is required'
+            });
+        }
+
+        const users = await User.find({ role }).select('name email _id');
+        res.status(200).json({
+            success: true,
+            data: users
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+}
+
 // export const getUser = async (req,res)=>{
 //  try{
 

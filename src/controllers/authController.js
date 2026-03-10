@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 import sendEmail from "../utils/sendMail.js";
+import utils from "../models/utilsSchema.js";
 
 let cookiesConfig = {
   // httpOnly: true,
@@ -31,7 +32,7 @@ let cookiesConfig = {
 //       });
 //     }
 
-//     const hashed = await bcrypt.hash(password, 10);
+//        const hashed = await bcrypt.hash(userPassword, 10);
 
 //     const user = await User.create({
 //       name,
@@ -57,7 +58,7 @@ let cookiesConfig = {
 
 export async function login(req, res) {
   try {
-    let { email, password , isMobileApp} = req.body;
+    let { email, password, isMobileApp } = req.body;
     let user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
@@ -92,11 +93,11 @@ export async function login(req, res) {
     user.isFirstLogin = false;
 
     user = (await user.save()).toObject();
-    
-    delete user.password 
+
+    delete user.password
     delete user.isFirstLogin;
-    
-    if(isMobileApp){
+
+    if (isMobileApp) {
       return res.status(200).json({
         success: true,
         userId: user._id,
@@ -131,7 +132,7 @@ export async function login(req, res) {
 
 export const getUsers = async (req, res) => {
   try {
-    const { role, bootcampId, domainId, status, startDate, endDate } =req.query;
+    const { role, bootcampId, domainId, status, startDate, endDate } = req.query;
 
     let filter = {};
 
@@ -297,7 +298,7 @@ export async function logout(req, res) {
 //   }
 // }
 
-export async function changePassword(req , res) {
+export async function changePassword(req, res) {
   try {
     let { oldPassword, newPassword } = req.body;
     let user = req.user;
@@ -326,168 +327,169 @@ export async function changePassword(req , res) {
       success: false,
       message: error.message,
     });
-  
+
   }
 }
 
 export async function sentOtpForResetPassword(req, res) {
-    try {
+  try {
 
-        let { email } = req.body; 
-        if (!email) {
-            return res.status(401).json({
-                success: false,
-                message: 'Email is required'
-            })
-        }
-
-        let user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'Email is not register'
-            })
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        const expiryTimeOfOtp = Date.now() + 10 * 60 * 1000;
-
-        const hashedOtp = await bcrypt.hash(otp.toString(), 10);
-
-        user.otp = hashedOtp;
-        user.otpExpiry = expiryTimeOfOtp;
-
-        await user.save();
-
-        await sendEmail({
-            to: user.email,
-            subject: 'OTP to reset your account password',
-            template: 'passwordReset',
-            context: {
-                otp,
-                expiryTime: '10',
-                name: user.name
-            }
-        });
-
-        res.status(200).json({
-            success: true,
-            message: 'OTP has successfully sent!'
-        })
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: error.message
-        })
+    let { email } = req.body;
+    if (!email) {
+      return res.status(401).json({
+        success: false,
+        message: 'Email is required'
+      })
     }
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Email is not register'
+      })
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const expiryTimeOfOtp = Date.now() + 10 * 60 * 1000;
+
+    const hashedOtp = await bcrypt.hash(otp.toString(), 10);
+
+    user.otp = hashedOtp;
+    user.otpExpiry = expiryTimeOfOtp;
+
+    await user.save();
+
+    await sendEmail({
+      to: user.email,
+      subject: 'OTP to reset your account password',
+      template: 'passwordReset',
+      context: {
+        otp,
+        expiryTime: '10',
+        name: user.name
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP has successfully sent!'
+    })
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
 }
 
 export async function verifyOtp(req, res) {
-    try {
-        let { otp, email , newPassword } = req.body;
-        let user = await User.findOne({ email });
-        let currentTime = new Date();
-        let otpExpiryTime = new Date(user.otpExpiry);
-        let isOtpExpired = currentTime > otpExpiryTime;
-        if (isOtpExpired) {
-            return res.status(400).json({
-                success: false,
-                message: 'Otp has expired'
-            })
-        }
-        let isOtpCorrect = await bcrypt.compare(otp, user.otp);
-        if (!isOtpCorrect) {
-            return res.status(401).json({
-                success: false,
-                message: 'Wrong OTP'
-            })
-        }
-
-        let newhashedPassword = await bcrypt.hash(newPassword, 10);
-        user.password = newhashedPassword;
-        user.otp = null;
-        user.otpExpiry = null;
-        await user.save();
-
-        res.status(200).json({
-            success: true,
-            message: 'Password has successfully changed'
-        })
-
-
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({
-            success: false,
-            message: error.message
-        })
+  try {
+    let { otp, email, newPassword } = req.body;
+    let user = await User.findOne({ email });
+    let currentTime = new Date();
+    let otpExpiryTime = new Date(user.otpExpiry);
+    let isOtpExpired = currentTime > otpExpiryTime;
+    if (isOtpExpired) {
+      return res.status(400).json({
+        success: false,
+        message: 'Otp has expired'
+      })
     }
+    let isOtpCorrect = await bcrypt.compare(otp, user.otp);
+    if (!isOtpCorrect) {
+      return res.status(401).json({
+        success: false,
+        message: 'Wrong OTP'
+      })
+    }
+
+    let newhashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = newhashedPassword;
+    user.otp = null;
+    user.otpExpiry = null;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Password has successfully changed'
+    })
+
+
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
 }
 
 export const register = async (req, res) => {
-    try {
-        const { name, email , role, studentBootcampId , teacherBootcampIds , domainId } = req.body;
+  try {
+    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, password } = req.body;
+    const userPassword = password || "BMS@2024";
 
-        if (!name || !email || !role) {
-            return res.status(400).send({
-                success: false,
-                message: "Required fields missing",
-            });
-        }
-
-        if(role === 'student' && !studentBootcampId){
-            return res.status(400).send({
-                success: false,
-                message: "Student bootcamp is required",
-            });
-        }
-
-        if (role === 'teacher' && teacherBootcampIds?.length === 0) {
-            return res.status(400).send({
-                success: false,
-                message: "Teacher bootcamp is required",
-            });
-        }
-
-
-
-        const existing = await User.findOne({ email });
-
-        if (existing) {
-            return res.status(400).send({
-                success: false,
-                message: "User already exists",
-            });
-        }
-
-        const hashed = await bcrypt.hash(password, 10);
-
-        const newUser = new User({
-            name,
-            email,
-            password: hashed,
-            role
-        });
-
-        let util = await utils.findOne();
-
-        util.rollNo = util.rollNo + 1;
-        await util.save();
-
-        newUser.rollNo = util.rollNo;
-
-        let user = await newUser.save();
-
-        res.status(201).send({
-            success: true,
-            message: "User created successfully",
-            data: user
-        });
-    } catch (err) {
-        res.status(500).send({
-            success: false,
-            message: err.message,
-        });
+    if (!name || !email || !role) {
+      return res.status(400).send({
+        success: false,
+        message: "Required fields missing",
+      });
     }
+
+    if (role === 'student' && !studentBootcampId) {
+      return res.status(400).send({
+        success: false,
+        message: "Student bootcamp is required",
+      });
+    }
+
+    if (role === 'teacher' && teacherBootcampIds?.length === 0) {
+      return res.status(400).send({
+        success: false,
+        message: "Teacher bootcamp is required",
+      });
+    }
+
+
+
+    const existing = await User.findOne({ email });
+
+    if (existing) {
+      return res.status(400).send({
+        success: false,
+        message: "User already exists",
+      });
+    }
+
+    const hashed = await bcrypt.hash(userPassword, 10);
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashed,
+      role
+    });
+
+    let util = await utils.findOne();
+
+    util.rollNo = util.rollNo + 1;
+    await util.save();
+
+    newUser.rollNo = util.rollNo;
+
+    let user = await newUser.save();
+
+    res.status(201).send({
+      success: true,
+      message: "User created successfully",
+      data: user
+    });
+  } catch (err) {
+    res.status(500).send({
+      success: false,
+      message: err.message,
+    });
+  }
 };
