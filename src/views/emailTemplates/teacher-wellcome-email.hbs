@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        .button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>Welcome to the Bootcamp Management System!</h2>
+    <p>Hello {{name}},</p>
+    <p>An Admin has added you as a <strong>Teacher</strong> for the following:</p>
+    <ul>
+        <li><strong>Bootcamp:</strong> {{bootcampName}}</li>
+        <li><strong>Domain:</strong> {{domainName}}</li>
+    </ul>
+    <p>Your account has been created[cite: 134]. Before you can access your dashboard to manage assignments and student
+        progress, please set your password[cite: 135, 161].</p>
+
+    <a href="{{setupPasswordLink}}" class="button">Set Your Password</a>
+
+    <p>If the button doesn't work, copy and paste this link: {{setupPasswordLink}}</p>
+    <p>Best regards,<br>BMS Administration</p>
+</body>
+
+</html>

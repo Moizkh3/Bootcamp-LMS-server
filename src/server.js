@@ -1,0 +1,65 @@
+import express from "express";
+import connectDB from "./config/db.js";
+import dotenv from "dotenv";
+import dns from "node:dns";
+import authRouter from "./routes/authRouter.js";
+// import submissionRoutes from "./routes/submissionRoutes.js";
+import userRouter from "./routes/userRouter.js";
+import studentRouter from "./routes/studentRouter.js";
+import cookieParser from "cookie-parser";
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+dotenv.config();
+const PORT = process.env.PORT || 5000;
+import cors from "cors";
+import checkAuth from "./middlewares/checkAuth.js";
+import checkAdmin from "./middlewares/checkAdmin.js";
+import checkStudent from "./middlewares/checkStudent.js";
+import adminDashboardRouter from "./routes/adminDashboardRouter.js";
+import domainRouter from "./routes/domainRoute.js";
+import studentDashboardRouter from "./routes/studentDashboardRouter.js";
+import bootcampRouter from "./routes/bootcampRouter.js";
+import teacherRouter from "./routes/teacherRoutes.js";
+import progressRouter from "./routes/progressRouter.js";
+const app = express();
+
+const corsOptions = {
+  origin: true,
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.use(express.json());
+
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
+// app.use("/submission", checkAuth ,submissionRoutes);
+app.use("/user", checkAuth ,userRouter);
+app.use("/student", studentRouter);
+app.use("/progress", progressRouter);
+
+// testing api
+app.get("/", (req, res) => {
+  res.json({ message: "Server Working!" });
+});
+
+app.use('/user' , checkAuth ,  userRouter);
+app.use('/domain' , checkAuth , checkAdmin , domainRouter);
+app.use('/admin-dashboard' , checkAuth , checkAdmin , adminDashboardRouter);
+app.use('/student-dashboard' , checkAuth , checkStudent , studentDashboardRouter);
+app.use('/auth' , authRouter);
+app.use("/teacher", teacherRouter)
+
+
+// currently working auth APIs
+app.use('/bootcamp' , bootcampRouter)
+
+
+connectDB()
+.then(()=>{
+    app.listen(PORT, () =>{
+        console.log(`server is running on http://localhost:${PORT}`)
+    })
+})

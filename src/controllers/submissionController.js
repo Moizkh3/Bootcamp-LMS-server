@@ -1,0 +1,187 @@
+import Submission from "../models/submissionModel.js";
+import cloudinary from "../config/cloudinary.js";
+import fs from "fs";
+
+export const createSubmission = async (req, res) => {
+  try {
+    let fileUrl = "";
+
+    if (req.file) {
+      // Upload to Cloudinary
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "bootcamp-submissions",
+      });
+
+      fileUrl = result.secure_url;
+
+      // Delete local file
+      fs.unlinkSync(req.file.path);
+    }
+
+    const submission = await Submission.create({
+      assignment: req.body.assignment,
+      student: req.user._id,
+      frontendGithubUrl: req.body.frontendGithubUrl,
+      backendGithubUrl: req.body.backendGithubUrl,
+      deployedUrl: req.body.deployedUrl,
+      note: req.body.note,
+      referenceFile: fileUrl,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Submission created successfully",
+      submission,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get all submissions with optional filters
+export const getAllSubmissions = async (req, res) => {
+  try {
+    const { student, assignment, bootcamp } = req.query;
+    let filter = {};
+    if (student) filter.student = student;
+    if (assignment) filter.assignment = assignment;
+
+    let query = Submission.find(filter)
+      .populate("student", "name email rollNo")
+      .populate(
+        "assignment",
+        "title description deadline documentUrl bootcamp",
+      );
+
+    const submissions = await query.exec();
+
+    // If we want to filter by bootcamp (since bootcamp is in the populated assignment)
+    // we can filter the array here if a user queried for bootcamp ID.
+    let filteredSubmissions = submissions;
+    if (bootcamp) {
+      filteredSubmissions = submissions.filter(
+        (sub) =>
+          sub.assignment &&
+          sub.assignment.bootcamp &&
+          sub.assignment.bootcamp.toString() === bootcamp,
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      count: filteredSubmissions.length,
+      submissions: filteredSubmissions,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get single submission by ID
+export const getSubmissionById = async (req, res) => {
+  try {
+    const submission = await Submission.findById(req.params.id)
+      .populate("student", "name email rollNo")
+      .populate(
+        "assignment",
+        "title description deadline documentUrl bootcamp",
+      );
+
+    if (!submission) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Submission not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      submission,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}; // Update submission
+export const updateSubmission = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let fileUrl = "";
+
+    const submission = await Submission.findById(id);
+    if (!submission) {
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res
+        .status(404)
+        .json({ success: false, message: "Submission not found" });
+    }
+
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "bootcamp-submissions",
+      });
+      fileUrl = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
+
+    const updateData = {
+      ...req.body,
+    };
+    if (fileUrl) {
+      updateData.referenceFile = fileUrl;
+    }
+
+    const updatedSubmission = await Submission.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true },
+    )
+      .populate("student", "name email rollNo")
+      .populate(
+        "assignment",
+        "title description deadline documentUrl bootcamp",
+      );
+
+    res.status(200).json({
+      success: true,
+      message: "Submission updated successfully",
+      submission: updatedSubmission,
+    });
+  } catch (error) {
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Delete submission
+export const deleteSubmission = async (req, res) => {
+  try {
+    const submission = await Submission.findByIdAndDelete(req.params.id);
+    if (!submission) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Submission not found" });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Submission deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
