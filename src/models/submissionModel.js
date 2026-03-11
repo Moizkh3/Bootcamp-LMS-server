@@ -34,6 +34,19 @@ const submittedassignmentSchema = new mongoose.Schema(
     note: {
       type: String,
     },
+    status: {
+      type: String,
+      enum: ["submitted", "graded", "re-submit", "late", "under-review"],
+      default: "submitted",
+    },
+    grade: {
+      type: Number,
+      default: 0,
+    },
+    feedback: {
+      type: String,
+      trim: true,
+    },
   },
 
   { timestamps: true },

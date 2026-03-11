@@ -60,9 +60,40 @@ export async function getProfile(req, res) {
     }
 }
 
+export async function updateProfile(req, res) {
+    try {
+        const userId = req.user._id;
+        const { name, phone, bio, location, avatar } = req.body;
+
+        const updatedUser = await User.findByIdAndUpdate(
+            userId,
+            { name, phone, bio, location, avatar },
+            { new: true, runValidators: true }
+        ).select("-password -otp -otpExpiry");
+
+        if (!updatedUser) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: updatedUser
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+}
+
 export async function getUsersByRole(req, res) {
     try {
-        const { role } = req.query;
+        const { role, bootcampId } = req.query;
         if (!role) {
             return res.status(400).json({
                 success: false,
@@ -70,10 +101,20 @@ export async function getUsersByRole(req, res) {
             });
         }
 
-        const users = await User.find({ role }).select('name email _id');
+        let query = { role };
+        if (bootcampId) {
+            if (role === 'teacher') {
+                query.teacherBootcampIds = bootcampId;
+            } else if (role === 'student') {
+                query.studentBootcampId = bootcampId;
+            }
+        }
+
+        const users = await User.find(query).select('name email _id rollNo studentStatus teacherStatus createdAt');
         res.status(200).json({
             success: true,
-            data: users
+            data: users,
+            users: users // For frontend compatibility
         });
     } catch (error) {
         res.status(500).json({

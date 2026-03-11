@@ -1,0 +1,36 @@
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ≡ƒöÉ prevent building .env in docker: https://dotenvx.com/prebuild
+[
+  {
+    "_id": "69b1093c31d924fe74e4345d",
+    "title": "Submit Assignment",
+    "description": "Submit Assignment by 12 PM",
+    "bootcampId": "69b014ef68c3240205c573e0",
+    "domainId": "69b01e650fb1c214e2a1aa6c",
+    "createdBy": "69b015ff72e866eddd79041d",
+    "createdAt": "2026-03-11T06:18:36.229Z",
+    "updatedAt": "2026-03-11T06:18:36.229Z",
+    "__v": 0
+  },
+  {
+    "_id": "69b121ddea574b86f308cf4f",
+    "title": "Project summary.",
+    "description": "I need full project summary.",
+    "bootcampId": "69b014ef68c3240205c573e0",
+    "domainId": "69b01e650fb1c214e2a1aa6c",
+    "createdBy": "69b015ff72e866eddd79041d",
+    "createdAt": "2026-03-11T08:03:41.974Z",
+    "updatedAt": "2026-03-11T08:03:41.974Z",
+    "__v": 0
+  },
+  {
+    "_id": "69b122fdf0ad3063bd012de2",
+    "title": "Daily Meeting",
+    "description": "Every students come to the hall asap",
+    "bootcampId": "69b014ef68c3240205c573e0",
+    "domainId": "69b01e650fb1c214e2a1aa6c",
+    "createdBy": "69b015ff72e866eddd79041d",
+    "createdAt": "2026-03-11T08:08:29.257Z",
+    "updatedAt": "2026-03-11T08:08:29.257Z",
+    "__v": 0
+  }
+]

@@ -53,8 +53,8 @@ const assignmentSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["draft", "published"],
-      default: "published",
+      enum: ["draft", "published", "Active", "Closed"],
+      default: "Active",
     },
   },
   { timestamps: true },

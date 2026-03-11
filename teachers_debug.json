@@ -1,0 +1,14 @@
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ≡ƒ¢í∩╕Å auth for agents: https://vestauth.com
+Connecting to MongoDB with URI: mongodb+srv://moiz:m...
+MongoDB connected successfully to Atlas!
+[
+  {
+    "_id": "69b015ff72e866eddd79041d",
+    "name": "Talal",
+    "role": "teacher",
+    "teacherBootcampIds": [
+      "69b014ef68c3240205c573e0"
+    ],
+    "domainId": "69b01e650fb1c214e2a1aa6c"
+  }
+]

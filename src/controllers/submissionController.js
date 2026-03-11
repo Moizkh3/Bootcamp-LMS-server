@@ -41,39 +41,48 @@ export const createSubmission = async (req, res) => {
   }
 };
 
-// Get all submissions with optional filters
+// Get all submissions with real pagination
 export const getAllSubmissions = async (req, res) => {
   try {
-    const { student, assignment, bootcamp } = req.query;
+    const { student, assignment, bootcamp, page = 1, limit = 10 } = req.query;
+    
+    // Build filter
     let filter = {};
     if (student) filter.student = student;
     if (assignment) filter.assignment = assignment;
 
-    let query = Submission.find(filter)
-      .populate("student", "name email rollNo")
-      .populate(
-        "assignment",
-        "title description deadline documentUrl bootcamp",
-      );
-
-    const submissions = await query.exec();
-
-    // If we want to filter by bootcamp (since bootcamp is in the populated assignment)
-    // we can filter the array here if a user queried for bootcamp ID.
-    let filteredSubmissions = submissions;
+    // Handle bootcamp filter (requires population first if done client-side, 
+    // but better to handle via assignment sub-query if possible)
     if (bootcamp) {
-      filteredSubmissions = submissions.filter(
-        (sub) =>
-          sub.assignment &&
-          sub.assignment.bootcamp &&
-          sub.assignment.bootcamp.toString() === bootcamp,
-      );
+      // Find assignments belonging to this bootcamp first
+      const Assignment = mongoose.model('Assignment');
+      const assignmentsInBootcamp = await Assignment.find({ bootcamp }).select('_id');
+      filter.assignment = { $in: assignmentsInBootcamp.map(a => a._id) };
     }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Run count and find in parallel
+    const [submissions, totalSubmissions] = await Promise.all([
+      Submission.find(filter)
+        .populate("student", "name email rollNo")
+        .populate("assignment", "title description deadline documentUrl bootcamp")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .exec(),
+      Submission.countDocuments(filter)
+    ]);
 
     res.status(200).json({
       success: true,
-      count: filteredSubmissions.length,
-      submissions: filteredSubmissions,
+      submissions,
+      pagination: {
+        totalSubmissions,
+        totalPages: Math.ceil(totalSubmissions / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      }
     });
   } catch (error) {
     res.status(500).json({

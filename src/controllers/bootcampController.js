@@ -1,6 +1,7 @@
 import Bootcamp from "../models/bootcampModel.js";
 import User from "../models/user.js";
 import Domain from "../models/domainSchema.js";
+import mongoose from "mongoose";
 
 export async function createBootcamp(req, res) {
     try {
@@ -105,8 +106,9 @@ export async function getBootcampById(req, res) {
             studentBootcampId: req.params.id
         });
 
-        // Also fetch domains for this bootcamp if not already populated correctly
-        const domains = await Domain.find({ bootcamp: req.params.id });
+        const domains = await Domain.find({
+            bootcamp: new mongoose.Types.ObjectId(req.params.id)
+        }).catch(() => []);
 
         res.status(200).json({
             success: true,

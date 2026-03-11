@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Announcement } from "../models/announcementModel.js";
 
 export const createAnnouncement = async (req, res) => {
@@ -35,13 +36,26 @@ export const createAnnouncement = async (req, res) => {
 export const getAnnouncements = async (req, res) => {
     try {
         const { bootcampId, domainId } = req.query;
+        console.log(`GET_ANNOUNCEMENTS: bootcampId=${bootcampId}, domainId=${domainId}`);
         let filter = {};
-        if (bootcampId) filter.bootcampId = bootcampId;
-        if (domainId) filter.domainId = domainId;
+        
+        if (bootcampId && mongoose.Types.ObjectId.isValid(bootcampId)) {
+            filter.bootcampId = new mongoose.Types.ObjectId(bootcampId);
+        }
+        
+        if (domainId && domainId !== 'undefined' && mongoose.Types.ObjectId.isValid(domainId)) {
+            filter.$or = [
+                { domainId: new mongoose.Types.ObjectId(domainId) },
+                { domainId: null },
+                { domainId: { $exists: false } }
+            ];
+        }
 
+        console.log("ANNOUNCEMENT_FILTER:", JSON.stringify(filter));
         const announcements = await Announcement.find(filter)
             .populate("createdBy", "name")
             .sort({ createdAt: -1 });
+        console.log(`ANNOUNCEMENTS_FOUND: ${announcements.length}`);
 
         res.status(200).json({
             success: true,

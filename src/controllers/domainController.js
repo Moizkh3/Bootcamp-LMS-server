@@ -1,4 +1,7 @@
 import Domain from '../models/domainSchema.js'
+import User from '../models/user.js'
+import Bootcamp from '../models/bootcampModel.js'
+import mongoose from 'mongoose'
 
 export async function addDomain(req, res) {
     try {
@@ -94,13 +97,29 @@ export async function editDomain(req, res) {
 export async function getAllDomains(req, res) {
     try {
         let filters = {};
+        let domains = await Domain.find(filters).lean();
 
-        let domains = await Domain.find(filters);
+        const domainsWithCounts = await Promise.all(domains.map(async (domain) => {
+            // Migration check: if bootcamp is still a string name, try to fix it
+            if (domain.bootcamp && !mongoose.Types.ObjectId.isValid(domain.bootcamp)) {
+                const bc = await Bootcamp.findOne({ name: domain.bootcamp });
+                if (bc) {
+                    await Domain.findByIdAndUpdate(domain._id, { bootcamp: bc._id });
+                    domain.bootcamp = bc._id.toString();
+                }
+            }
+
+            const studentsCount = await User.countDocuments({
+                role: 'student',
+                domainId: domain._id
+            });
+            return { ...domain, studentsCount };
+        }));
 
         res.status(200).json({
             success: true,
             message: 'Domains fetched successfully',
-            data: domains
+            data: domainsWithCounts
         });
 
     } catch (error) {
@@ -108,7 +127,6 @@ export async function getAllDomains(req, res) {
             success: false,
             message: error.message
         });
-
     }
 }
 
@@ -124,10 +142,15 @@ export async function getDomainById(req, res) {
             });
         }
 
+        const studentsCount = await User.countDocuments({
+            role: 'student',
+            domainId: domain._id
+        });
+
         res.status(200).json({
             success: true,
             message: 'Domain fetched successfully',
-            data: domain
+            data: { ...domain.toObject(), studentsCount }
         });
 
     } catch (error) {

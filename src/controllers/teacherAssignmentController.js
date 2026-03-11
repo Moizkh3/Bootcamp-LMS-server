@@ -1,21 +1,22 @@
 import Assignment from "../models/assignmentModel.js";
 import SubmitAssignment from "../models/submissionModel.js";
+import User from "../models/user.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
 
 // create assignment
 export const createAssignment = async (req, res) => {
   try {
-    const { title, description, deadline } = req.body; // ✅ bootcamp req.body se nahi lenge
+    const { title, description, deadline, bootcamp, domain } = req.body;
 
-    if (!title || !description || !deadline) {
+    if (!title || !description || !deadline || !bootcamp || !domain) {
       return res.status(400).send({
         success: false,
         message: "All required fields are required",
       });
     }
 
-    if (!req.user.bootcampId) {
+    if (!req.user.teacherBootcampIds || req.user.teacherBootcampIds.length === 0) {
       return res.status(403).send({
         success: false,
         message: "You are not assigned to any bootcamp",
@@ -47,10 +48,10 @@ export const createAssignment = async (req, res) => {
       title,
       description,
       documentUrl: result.secure_url,
-      domain: req.user.domainId,       // ✅ Fix: "domain" (typo fix)
-      bootcamp: req.user.bootcampId,   // ✅ Fix: "bootcamp" not "bootcampId"
+      domain: domain,
+      bootcamp: bootcamp,
       deadline: deadlineDate,
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
+      teacher: req.user._id,
     });
 
     res.status(201).send({
@@ -69,19 +70,48 @@ export const createAssignment = async (req, res) => {
 // get assignments
 export const getAssignments = async (req, res) => {
   try {
-    const assignments = await Assignment.find({
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
-      bootcamp: req.user.bootcampId,
-    })
-      .populate("domain", "title")
+    const { bootcampId } = req.query;
+    let query = {};
+
+    // If teacher, restrict to their assignments or their assigned bootcamps
+    if (req.user.role === 'teacher') {
+      query.teacher = req.user._id;
+      if (req.user.teacherBootcampIds && req.user.teacherBootcampIds.length > 0) {
+        query.bootcamp = { $in: req.user.teacherBootcampIds };
+      }
+    }
+
+    // If bootcampId is provided (from Admin or Teacher filter), apply it
+    if (bootcampId) {
+      query.bootcamp = bootcampId;
+    }
+
+    const assignments = await Assignment.find(query)
+      .populate("domain", "name")
       .populate("bootcamp", "name")
-      .populate("teacher", "name")     // ✅ Fix: "mentor" → "teacher"
+      .populate("teacher", "name")
       .sort({ createdAt: -1 });
+
+    // Enrich with submissionsCount and totalStudentsCount
+    const enriched = await Promise.all(assignments.map(async (a) => {
+      const submissionsCount = await SubmitAssignment.countDocuments({ assignment: a._id });
+      const bootcampId = a.bootcamp?._id || a.bootcamp;
+      const totalStudentsCount = bootcampId ? await User.countDocuments({
+        role: "student",
+        studentBootcampId: bootcampId,
+        studentStatus: "enrolled"
+      }) : 0;
+      return {
+        ...a.toObject(),
+        submissionsCount,
+        totalStudentsCount
+      };
+    }));
 
     res.status(200).send({
       success: true,
       message: "Assignments fetched successfully",
-      data: assignments,
+      data: enriched,
     });
   } catch (error) {
     return res.status(500).send({
@@ -96,8 +126,8 @@ export const updatedAssignment = async (req, res) => {
   try {
     const assignment = await Assignment.findOne({
       _id: req.params.id,
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
-      bootcamp: req.user.bootcampId,
+      teacher: req.user._id,
+      bootcamp: { $in: req.user.teacherBootcampIds || [] },
     });
 
     if (!assignment) {
@@ -128,8 +158,8 @@ export const deleteAssignment = async (req, res) => {
   try {
     const assignment = await Assignment.findOne({
       _id: req.params.id,
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
-      bootcamp: req.user.bootcampId,
+      teacher: req.user._id,
+      bootcamp: { $in: req.user.teacherBootcampIds || [] },
     });
 
     if (!assignment) {
@@ -160,8 +190,8 @@ export const updateDeadline = async (req, res) => {
 
     const assignment = await Assignment.findOne({
       _id: req.params.id,
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
-      bootcamp: req.user.bootcampId,
+      teacher: req.user._id,
+      bootcamp: { $in: req.user.teacherBootcampIds || [] },
     });
 
     if (!assignment) {
@@ -191,7 +221,7 @@ export const updateDeadline = async (req, res) => {
 export const reviewSubmission = async (req, res) => {
   try {
     const { submissionId } = req.params;
-    const { status, feedback } = req.body;
+    const { status, feedback, grade } = req.body;
 
     if (!status) {
       return res.status(400).send({
@@ -200,10 +230,10 @@ export const reviewSubmission = async (req, res) => {
       });
     }
 
-    if (!["approved", "rejected"].includes(status)) {
+    if (!["graded", "re-submit", "under-review"].includes(status)) {
       return res.status(400).send({
         success: false,
-        message: "Status must be approved or rejected",
+        message: "Status must be graded, re-submit, or under-review",
       });
     }
 
@@ -219,9 +249,8 @@ export const reviewSubmission = async (req, res) => {
 
     // validate teacher owns the assignment
     if (
-      submission.assignment.teacher.toString() !== req.user._id.toString() || // ✅ Fix: "mentor" → "teacher"
-      submission.assignment.bootcamp.toString() !==
-        req.user.bootcampId.toString()
+      submission.assignment.teacher.toString() !== req.user._id.toString() ||
+      !(req.user.teacherBootcampIds || []).some(id => id.toString() === submission.assignment.bootcamp.toString())
     ) {
       return res.status(403).send({
         success: false,
@@ -231,6 +260,7 @@ export const reviewSubmission = async (req, res) => {
 
     submission.status = status;
     submission.feedback = feedback;
+    submission.grade = grade;
     submission.reviewedAt = new Date();
     await submission.save();
 
@@ -254,8 +284,8 @@ export const getAssignmentSubmissions = async (req, res) => {
 
     const assignment = await Assignment.findOne({
       _id: assignmentId,
-      teacher: req.user._id,           // ✅ Fix: "mentor" → "teacher"
-      bootcamp: req.user.bootcampId,
+      teacher: req.user._id,
+      bootcamp: { $in: req.user.teacherBootcampIds || [] },
     });
 
     if (!assignment) {

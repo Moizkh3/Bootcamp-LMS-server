@@ -74,6 +74,10 @@ const userSchema = new mongoose.Schema(
     isFirstLogin: {
       type: Boolean,
       default: true,
+    },
+    lastNotificationCheck: {
+      type: Date,
+      default: Date.now
     }
 
   },

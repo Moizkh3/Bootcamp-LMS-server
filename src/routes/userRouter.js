@@ -1,6 +1,7 @@
 import express from "express";
 import {
     getProfile,
+    updateProfile,
     getUsersByRole
 } from "../controllers/userController.js";
 import {
@@ -15,6 +16,7 @@ import checkAdmin from "../middlewares/checkAdmin.js";
 const userRouter = express.Router();
 
 userRouter.get("/profile", checkAuth, getProfile);
+userRouter.put("/update-profile", checkAuth, updateProfile);
 userRouter.get("/role-users", checkAuth, getUsersByRole); // Simple list for dropdowns
 
 // Admin Management Routes

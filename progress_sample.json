@@ -1,0 +1,15 @@
+{
+  "_id": "69b113095f45905c372d79fa",
+  "studentId": "69b01701a90d63aaa4afeabc",
+  "bootcampId": "69b014ef68c3240205c573e0",
+  "yesterdayWork": "I did integrate Admin panel API's",
+  "todayPlan": "I will integrate Student panel API's",
+  "blockers": "Needing API's for teacher dashboard integration",
+  "githubLink": "none",
+  "hoursWorked": 8,
+  "needMentor": false,
+  "date": "2026-03-11T07:00:25.216Z",
+  "createdAt": "2026-03-11T07:00:25.228Z",
+  "updatedAt": "2026-03-11T07:00:25.228Z",
+  "__v": 0
+}

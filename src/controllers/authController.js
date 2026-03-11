@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import User from "../models/user.js";
+import Bootcamp from "../models/bootcampModel.js";
+import Domain from "../models/domainSchema.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -143,13 +146,13 @@ export const getUsers = async (req, res) => {
 
     if (bootcampId) {
       filter.$or = [
-        { studentBootcampId: bootcampId },
-        { teacherBootcampIds: bootcampId }
+        { studentBootcampId: new mongoose.Types.ObjectId(bootcampId) },
+        { teacherBootcampIds: new mongoose.Types.ObjectId(bootcampId) }
       ];
     }
 
     if (domainId) {
-      filter.domainId = domainId;
+      filter.domainId = new mongoose.Types.ObjectId(domainId);
     }
 
     if (status) {
@@ -528,6 +531,29 @@ export const register = async (req, res) => {
     newUser.rollNo = util.rollNo;
 
     let user = await newUser.save();
+
+    // Send Welcome Email
+    try {
+      if (role === 'teacher' || role === 'student') {
+        const bootcampId = role === 'student' ? studentBootcampId : teacherBootcampIds[0];
+        const bc = await Bootcamp.findById(bootcampId);
+        const dom = await Domain.findById(domainId);
+
+        await sendEmail({
+          to: user.email,
+          subject: `Welcome to BMS! - ${name}`,
+          template: role === 'teacher' ? 'teacher-wellcome-email' : 'student-wellcome-email',
+          context: {
+            name: user.name,
+            bootcampName: bc?.name || 'Assigned Bootcamp',
+            domainName: dom?.name || 'General',
+            setupPasswordLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/set-password?email=${user.email}`
+          }
+        });
+      }
+    } catch (emailErr) {
+      console.error("Failed to send welcome email:", emailErr);
+    }
 
     res.status(201).send({
       success: true,

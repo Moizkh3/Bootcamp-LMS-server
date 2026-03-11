@@ -4,14 +4,20 @@ export const submitProgress = async (req, res) => {
   try {
     const {
       yesterdayWork,
+      workedOn,
       todayPlan,
+      planToday,
       blockers,
+      needMentor,
       githubLink,
       hoursWorked,
       date,
     } = req.body;
 
-    if (!yesterdayWork || !todayPlan || hoursWorked === undefined) {
+    const finalYesterdayWork = yesterdayWork || workedOn;
+    const finalTodayPlan = todayPlan || planToday;
+
+    if (!finalYesterdayWork || !finalTodayPlan || hoursWorked === undefined) {
       return res.status(400).send({
         success: false,
         message: "Required fields missing",
@@ -20,10 +26,11 @@ export const submitProgress = async (req, res) => {
 
     const progressData = {
       studentId: req.user._id,
-      bootcampId: req.user.bootcampId,
-      yesterdayWork,
-      todayPlan,
+      bootcampId: req.user.studentBootcampId || req.user.bootcampId,
+      yesterdayWork: finalYesterdayWork,
+      todayPlan: finalTodayPlan,
       blockers,
+      needMentor: !!needMentor,
       githubLink,
       hoursWorked,
     };
@@ -90,7 +97,9 @@ export const getStudentProgress = async (req, res) => {
   try {
     const progress = await Progress.find({
       studentId: req.user._id,
-    }).sort({ date: -1, createdAt: -1 });
+    })
+      .populate("mentor", "name")
+      .sort({ date: -1, createdAt: -1 });
 
     res.status(200).send({
       success: true,
@@ -124,5 +133,36 @@ export const getBootcampProgress = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// Teacher review standup
+export const reviewStandup = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { grade, feedback } = req.body;
+    console.log(`[ReviewStandup] ID: ${id}, Grade: ${grade}, User: ${req.user?._id}`);
+
+    const progress = await Progress.findById(id);
+    if (!progress) {
+      console.log(`[ReviewStandup] Progress not found for ID: ${id}`);
+      return res.status(404).json({ success: false, message: "Progress record not found" });
+    }
+
+    progress.reviewedAt = new Date();
+    progress.mentor = req.user._id;
+    if (grade) progress.grade = grade;
+    
+    await progress.save();
+    console.log(`[ReviewStandup] Successfully updated ID: ${id}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Standup reviewed successfully",
+      data: progress
+    });
+  } catch (error) {
+    console.error(`[ReviewStandup] Error: ${error.message}`);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -1,6 +1,7 @@
 import Bootcamp from "../models/bootcampModel.js";
 import User from "../models/user.js";
 import assignment from "../models/assignmentModel.js";
+import SubmittedAssignment from "../models/submissionModel.js";
 import Domain from "../models/domainSchema.js";
 
 export async function getKpis(req, res) {
@@ -48,11 +49,16 @@ export async function getKpis(req, res) {
       deadline: { $gte: new Date() },
     });
 
+    let totalSubmissions = await SubmittedAssignment.countDocuments();
+    let pendingSubmissions = await SubmittedAssignment.countDocuments({ status: "submitted" });
+
     let anylatics = {
       totalBootcamps,
       totalStudents: users?.students ?? 0,
       totalTeachers: users?.teachers ?? 0,
       activeassignments,
+      totalSubmissions,
+      pendingSubmissions
     };
 
     res.status(200).json({

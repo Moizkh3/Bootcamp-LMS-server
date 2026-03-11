@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "69b01e650fb1c214e2a1aa6c",
+    "name": "Full Stack",
+    "bootcamp": "69b014ef68c3240205c573e0",
+    "status": "Active",
+    "type": "Core Track",
+    "mentorName": "Talal",
+    "mentorAvatar": "",
+    "studentsCount": 0,
+    "createdAt": "2026-03-10T13:36:37.649Z",
+    "updatedAt": "2026-03-10T14:05:09.675Z",
+    "__v": 0
+  },
+  {
+    "_id": "69b10f2f0e7e744e78bbe413",
+    "name": "AI",
+    "bootcamp": "69b014ef68c3240205c573e0",
+    "status": "Active",
+    "type": "Core Track",
+    "mentorName": "Talal",
+    "mentorAvatar": "",
+    "studentsCount": 0,
+    "createdAt": "2026-03-11T06:43:59.888Z",
+    "updatedAt": "2026-03-11T06:43:59.888Z",
+    "__v": 0
+  }
+]

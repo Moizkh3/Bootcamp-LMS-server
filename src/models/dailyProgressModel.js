@@ -36,6 +36,21 @@ const progressSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    needMentor: {
+      type: Boolean,
+      default: false,
+    },
+    grade: {
+      type: String,
+      default: "",
+    },
+    mentor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    reviewedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

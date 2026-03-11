@@ -3,7 +3,7 @@ import connectDB from "./config/db.js";
 import dotenv from "dotenv";
 import dns from "node:dns";
 import authRouter from "./routes/authRouter.js";
-// import submissionRoutes from "./routes/submissionRoutes.js";
+import submissionRoutes from "./routes/submissionRoutes.js";
 import userRouter from "./routes/userRouter.js";
 import studentRouter from "./routes/studentRouter.js";
 import cookieParser from "cookie-parser";
@@ -21,6 +21,7 @@ import bootcampRouter from "./routes/bootcampRouter.js";
 import teacherRouter from "./routes/teacherRoutes.js";
 import progressRouter from "./routes/progressRouter.js";
 import announcementRouter from "./routes/announcementRouter.js";
+import notificationRouter from "./routes/notificationRouter.js";
 const app = express();
 
 const corsOptions = {
@@ -36,10 +37,11 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-// app.use("/submission", checkAuth ,submissionRoutes);
+app.use("/submission", checkAuth, submissionRoutes);
 app.use("/user", checkAuth, userRouter);
 app.use("/student", studentRouter);
 app.use("/progress", progressRouter);
+app.use("/notifications", notificationRouter);
 
 // testing api
 app.get("/", (req, res) => {
@@ -47,7 +49,7 @@ app.get("/", (req, res) => {
 });
 
 app.use('/user', checkAuth, userRouter);
-app.use('/domain', checkAuth, checkAdmin, domainRouter);
+app.use('/domain', checkAuth, domainRouter);
 app.use('/admin-dashboard', checkAuth, checkAdmin, adminDashboardRouter);
 app.use('/student-dashboard', checkAuth, checkStudent, studentDashboardRouter);
 app.use('/auth', authRouter);
