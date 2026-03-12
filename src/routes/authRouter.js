@@ -14,6 +14,13 @@ authRouter.get('/logout', logout);
 authRouter.get('/get-profile', checkAuth, getProfile);
 authRouter.put('/change-password', checkAuth, changePassword);
 authRouter.post('/getVerificationEmailForForgetPassword', sentOtpForResetPassword);
+authRouter.get('/check-email-config', (req, res) => {
+  res.json({
+    emailUser: process.env.EMAIL_USER ? `${process.env.EMAIL_USER.split('@')[0].slice(0, 3)}...` : 'MISSING',
+    emailPass: process.env.EMAIL_PASS ? 'DEFINED (MASKED)' : 'MISSING',
+    nodeEnv: process.env.NODE_ENV || 'development'
+  });
+});
 authRouter.post('/verifyOtp', verifyOtp);
 authRouter.post('/register', register);
 authRouter.post('/bulk-register', checkAuth, checkAdminOrTeacher, upload.single('file'), registerBulkUsers);
