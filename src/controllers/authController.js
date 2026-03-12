@@ -121,7 +121,11 @@ export async function login(req, res) {
         role: user.role,
         status: user.status,
         isFirstLogin,
-        name:user.name
+        name: user.name,
+        studentStatus: user.studentStatus,
+        teacherStatus: user.teacherStatus,
+        rollNo: user.rollNo,
+        email: user.email
       })
     }
 
