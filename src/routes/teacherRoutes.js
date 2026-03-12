@@ -5,10 +5,12 @@ import {
     createAssignment,
     deleteAssignment,
     getAssignments,
+    getAssignmentById,
     getAssignmentSubmissions,
     reviewSubmission,
     updatedAssignment,
-    updateDeadline
+    updateDeadline,
+    getStudentAssignments
 } from "../controllers/teacherAssignmentController.js";
 import {
     getTeacherStats,
@@ -25,9 +27,11 @@ router.get("/get-submission/:id", checkAuth, checkTeacher, getSubmissionById);
 router.post("/create-assignment", upload.single("document"), checkAuth, checkTeacher, createAssignment);
 router.put("/update-assignment/:id", checkAuth, checkTeacher, updatedAssignment);
 router.get("/get-assignments", checkAuth, checkTeacher, getAssignments);
+router.get("/get-assignment/:id", checkAuth, getAssignmentById);
 router.delete("/delete-assignment/:id", checkAuth, checkTeacher, deleteAssignment);
 router.put("/update-deadline/:id", checkAuth, checkTeacher, updateDeadline);
 router.post("/review-submission/:submissionId", checkAuth, checkTeacher, reviewSubmission);
 router.get("/get-assignment-submissions/:assignmentId", checkAuth, checkTeacher, getAssignmentSubmissions);
+router.get("/get-student-assignments", checkAuth, getStudentAssignments)
 
 export default router;

@@ -30,6 +30,14 @@ const submittedassignmentSchema = new mongoose.Schema(
     deployedUrl: {
       type: String,
     },
+ 
+    behanceUrl: {
+      type: String,
+    },
+ 
+    figmaUrl: {
+      type: String,
+    },
 
     note: {
       type: String,

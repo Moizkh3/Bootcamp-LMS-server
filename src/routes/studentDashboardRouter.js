@@ -4,11 +4,13 @@ import {
     getStudentStats, 
     getStudentAssignments 
 } from "../controllers/studentDashboardController.js";
+import { getAssignmentById } from "../controllers/teacherAssignmentController.js";
 
 const studentDashboardRouter = express.Router();
 
 studentDashboardRouter.get("/is-submit-today-standup" , isSubmitTodayStandup);
 studentDashboardRouter.get("/stats", getStudentStats);
 studentDashboardRouter.get("/assignments", getStudentAssignments);
+studentDashboardRouter.get("/assignment/:id", getAssignmentById);
 
 export default studentDashboardRouter;

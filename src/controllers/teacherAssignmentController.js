@@ -7,7 +7,7 @@ import fs from "fs";
 // create assignment
 export const createAssignment = async (req, res) => {
   try {
-    const { title, description, deadline, bootcamp, domain } = req.body;
+    const { title, description, deadline, bootcamp, domain, requiredLinks } = req.body;
 
     if (!title || !description || !deadline || !bootcamp || !domain) {
       return res.status(400).send({
@@ -23,13 +23,6 @@ export const createAssignment = async (req, res) => {
       });
     }
 
-    if (!req.file) {
-      return res.status(400).send({
-        success: false,
-        message: "Assignment document is required",
-      });
-    }
-
     const deadlineDate = new Date(deadline);
     if (deadlineDate <= new Date()) {
       return res.status(400).send({
@@ -38,20 +31,24 @@ export const createAssignment = async (req, res) => {
       });
     }
 
-    const result = await cloudinary.uploader.upload(req.file.path, {
-      folder: "bootcamp-submissions",
-    });
-
-    fs.unlinkSync(req.file.path); // ✅ Fix: local temp file delete karo upload ke baad
+    let documentUrl = "";
+    if (req.file) {
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "bootcamp-submissions",
+      });
+      documentUrl = result.secure_url;
+      fs.unlinkSync(req.file.path);
+    }
 
     const assignment = await Assignment.create({
       title,
       description,
-      documentUrl: result.secure_url,
+      documentUrl,
       domain: domain,
       bootcamp: bootcamp,
       deadline: deadlineDate,
       teacher: req.user._id,
+      requiredLinks: requiredLinks ? (Array.isArray(requiredLinks) ? requiredLinks : JSON.parse(requiredLinks)) : ["frontendGithubUrl"],
     });
 
     res.status(201).send({
@@ -67,6 +64,24 @@ export const createAssignment = async (req, res) => {
   }
 };
 
+// get single assignment by ID
+export const getAssignmentById = async (req, res) => {
+  try {
+    const assignment = await Assignment.findById(req.params.id)
+      .populate("domain", "name")
+      .populate("bootcamp", "name")
+      .populate("teacher", "name");
+ 
+    if (!assignment) {
+      return res.status(404).json({ success: false, message: "Assignment not found" });
+    }
+ 
+    res.status(200).json({ success: true, data: assignment });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+ 
 // get assignments
 export const getAssignments = async (req, res) => {
   try {
@@ -307,6 +322,48 @@ export const getAssignmentSubmissions = async (req, res) => {
     res.status(500).send({
       success: false,
       message: err.message,
+    });
+  }
+};
+
+export const getStudentAssignments = async (req, res) => {
+  try {
+    const student = req.user;
+    // Student ka bootcamp aur domain 
+    if (!student.studentBootcampId) {
+      return res.status(403).send({
+        success: false,
+        message: "You are not enrolled in any bootcamp",
+      });
+    }
+
+    if (!student.domainId) {
+      return res.status(403).send({
+        success: false,
+        message: "You are not assigned to any domain",
+      });
+    }
+
+    const assignments = await Assignment.find({
+      bootcamp: student.studentBootcampId,
+      domain: student.domainId,
+      status: "published", 
+    })
+      .populate("teacher", "name email")
+      .populate("bootcamp", "name")
+      .populate("domain", "title")
+      .sort({ createdAt: -1 });
+
+    res.status(200).send({
+      success: true,
+      message: "Assignments fetched successfully",
+      total: assignments.length,
+      data: assignments,
+    });
+  } catch (error) {
+    return res.status(500).send({
+      success: false,
+      message: error.message,
     });
   }
 };

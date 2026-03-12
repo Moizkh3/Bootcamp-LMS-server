@@ -24,6 +24,8 @@ export const createSubmission = async (req, res) => {
       frontendGithubUrl: req.body.frontendGithubUrl,
       backendGithubUrl: req.body.backendGithubUrl,
       deployedUrl: req.body.deployedUrl,
+      behanceUrl: req.body.behanceUrl,
+      figmaUrl: req.body.figmaUrl,
       note: req.body.note,
       referenceFile: fileUrl,
     });

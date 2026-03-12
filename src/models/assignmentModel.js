@@ -56,6 +56,10 @@ const assignmentSchema = new mongoose.Schema(
       enum: ["draft", "published", "Active", "Closed"],
       default: "Active",
     },
+    requiredLinks: {
+      type: [String],
+      default: ["frontendGithubUrl"],
+    },
   },
   { timestamps: true },
 );
