@@ -1,6 +1,7 @@
 import Submission from "../models/submissionModel.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
+import mongoose from "mongoose";
 
 export const createSubmission = async (req, res) => {
   try {
@@ -50,12 +51,11 @@ export const getAllSubmissions = async (req, res) => {
     
     // Build filter
     let filter = {};
-    if (student) filter.student = student;
-    if (assignment) filter.assignment = assignment;
+    if (student && student !== "undefined") filter.student = student;
+    if (assignment && assignment !== "undefined") filter.assignment = assignment;
 
-    // Handle bootcamp filter (requires population first if done client-side, 
-    // but better to handle via assignment sub-query if possible)
-    if (bootcamp) {
+    // Handle bootcamp filter
+    if (bootcamp && bootcamp !== "undefined") {
       // Find assignments belonging to this bootcamp first
       const Assignment = mongoose.model('Assignment');
       const assignmentsInBootcamp = await Assignment.find({ bootcamp }).select('_id');

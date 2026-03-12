@@ -43,6 +43,18 @@ const userSchema = new mongoose.Schema(
     domainId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Domain",
+      required: function () {
+        return this.role === "student";
+      }
+    },
+
+    teacherDomainIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Domain",
+      required: function () {
+        return this.role === "teacher";
+      },
+      default: []
     },
 
     studentStatus: {

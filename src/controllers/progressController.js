@@ -67,11 +67,11 @@ export const updateProgress = async (req, res) => {
     const now = new Date();
     const created = new Date(progress.createdAt);
 
-    const diff = (now - created) / (1000 * 60 * 60);
+    const diff = (now - created) / (1000 * 60);
 
-    if (diff > 2) {
+    if (diff > 20) {
       return res.status(403).send({
-        message: "Progress can only be edited within 2 hours",
+        message: "Progress can only be edited within 20 minutes",
       });
     }
     const updatedProgress = await Progress.findByIdAndUpdate(
@@ -152,6 +152,7 @@ export const reviewStandup = async (req, res) => {
     progress.reviewedAt = new Date();
     progress.mentor = req.user._id;
     if (grade) progress.grade = grade;
+    if (feedback) progress.feedback = feedback;
     
     await progress.save();
     console.log(`[ReviewStandup] Successfully updated ID: ${id}`);

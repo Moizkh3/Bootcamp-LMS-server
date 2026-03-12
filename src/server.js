@@ -28,7 +28,7 @@ const corsOptions = {
   origin: ["http://localhost:5173", "https://bootcamp-tracker-2-client.vercel.app"], // Add your frontend production URL here later
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "mobiletoken", "ismobileapp"]
 };
 
 app.use(cors(corsOptions));
@@ -38,7 +38,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use("/submission", checkAuth, submissionRoutes);
-app.use("/user", checkAuth, userRouter);
 app.use("/student", studentRouter);
 app.use("/progress", progressRouter);
 app.use("/notifications", notificationRouter);

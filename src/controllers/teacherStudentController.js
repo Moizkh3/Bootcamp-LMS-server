@@ -7,8 +7,10 @@ import mongoose from "mongoose";
 // Fetch students assigned to the teacher's bootcamps
 export const getTeacherStudents = async (req, res) => {
   try {
-    const teacher = req.user;
-    if (!teacher.teacherBootcampIds || teacher.teacherBootcampIds.length === 0) {
+    const teacherId = req.user._id;
+    const teacher = await User.findById(teacherId);
+
+    if (!teacher || !teacher.teacherBootcampIds || teacher.teacherBootcampIds.length === 0) {
       return res.status(200).json({
         success: true,
         count: 0,
@@ -16,14 +18,23 @@ export const getTeacherStudents = async (req, res) => {
       });
     }
 
-    const students = await User.find({
+    const studentQuery = {
       role: "student",
       studentBootcampId: { $in: teacher.teacherBootcampIds },
-    })
+    };
+
+    // If teacher has specific domains assigned, filter by them as well
+    if (teacher.teacherDomainIds && teacher.teacherDomainIds.length > 0) {
+      studentQuery.domainId = { $in: teacher.teacherDomainIds };
+    }
+
+    const students = await User.find(studentQuery)
       .select("-password")
       .populate("studentBootcampId", "name")
       .populate("domainId", "name")
       .sort({ rollNo: 1 });
+
+    console.log(`Fetched ${students.length} students for teacher ${teacherId}`);
 
     res.status(200).json({
       success: true,
@@ -42,6 +53,10 @@ export const getTeacherStudents = async (req, res) => {
 export const getStudentFullProgress = async (req, res) => {
   try {
     const { studentId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(studentId)) {
+      return res.status(400).json({ success: false, message: "Invalid student ID" });
+    }
 
     // Verify student exists and is in teacher's bootcamp (optional but recommended)
     const student = await User.findOne({ _id: studentId, role: "student" }).select("-password");

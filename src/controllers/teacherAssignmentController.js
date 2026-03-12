@@ -262,11 +262,11 @@ export const reviewSubmission = async (req, res) => {
       });
     }
 
-    // validate teacher owns the assignment
-    if (
-      submission.assignment.teacher.toString() !== req.user._id.toString() ||
-      !(req.user.teacherBootcampIds || []).some(id => id.toString() === submission.assignment.bootcamp.toString())
-    ) {
+    // Allow review if the teacher is the owner OR if they belong to the same bootcamp
+    const isOwner = submission.assignment.teacher.toString() === req.user._id.toString();
+    const isInBootcamp = (req.user.teacherBootcampIds || []).some(id => id.toString() === submission.assignment.bootcamp.toString());
+
+    if (!isOwner && !isInBootcamp) {
       return res.status(403).send({
         success: false,
         message: "You are not authorized to review this submission",
@@ -351,7 +351,7 @@ export const getStudentAssignments = async (req, res) => {
     })
       .populate("teacher", "name email")
       .populate("bootcamp", "name")
-      .populate("domain", "title")
+      .populate("domain", "name")
       .sort({ createdAt: -1 });
 
     res.status(200).send({

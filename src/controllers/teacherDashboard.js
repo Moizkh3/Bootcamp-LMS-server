@@ -11,24 +11,27 @@ export const getTeacherStats = async (req, res) => {
         const teacherId = req.user._id;
         const teacher = await User.findById(teacherId)
             .populate('teacherBootcampIds', 'name')
-            .populate('domainId', 'name');
+            .populate('teacherDomainIds', 'name');
 
-        // A teacher can be assigned to multiple bootcamps — cast to ObjectId to ensure proper matching
-        const bootcampIds = teacher.teacherBootcampIds.map(b => new mongoose.Types.ObjectId(b._id || b));
-        const domainId = teacher.domainId?._id ? new mongoose.Types.ObjectId(teacher.domainId._id) : null;
+        // Safety checks for teacher data
+        const bootcampIds = (teacher.teacherBootcampIds || []).map(b => new mongoose.Types.ObjectId(b._id || b));
+        const domainIds = (teacher.teacherDomainIds || []).map(d => new mongoose.Types.ObjectId(d._id || d));
 
-        const teacherDomainName = teacher.domainId?.name || 'All Domains';
-        const teacherDomainId = teacher.domainId?._id;
-        const teacherBootcampNames = teacher.teacherBootcampIds.map(b => b.name).join(', ') || 'All Bootcamps';
-        const activeBootcamps = teacher.teacherBootcampIds.map(b => ({ _id: b._id, name: b.name }));
+        const teacherDomainNames = teacher.teacherDomainIds?.length > 0 
+            ? teacher.teacherDomainIds.map(d => d.name).join(', ') 
+            : (teacher.domainId?.name || 'All Domains');
+        const teacherBootcampNames = (teacher.teacherBootcampIds || []).map(b => b.name).join(', ') || 'All Bootcamps';
+        const activeBootcamps = (teacher.teacherBootcampIds || []).map(b => ({ _id: b._id, name: b.name }));
 
         // 1. Total Enrolled Students (Match by Bootcamp OR Domain)
         const studentQueryConditions = [];
         if (bootcampIds && bootcampIds.length > 0) {
             studentQueryConditions.push({ studentBootcampId: { $in: bootcampIds } });
         }
-        if (domainId) {
-            studentQueryConditions.push({ domainId: domainId });
+        if (domainIds.length > 0) {
+            studentQueryConditions.push({ domainId: { $in: domainIds } });
+        } else if (teacher.domainId) {
+            studentQueryConditions.push({ domainId: teacher.domainId });
         }
 
         const studentQuery = {
@@ -136,8 +139,8 @@ export const getTeacherStats = async (req, res) => {
                 overdueAssignments,
                 upcomingDeadlines: formattedDeadlines,
                 recentActivity: formattedActivity,
-                teacherDomain: teacherDomainName,
-                teacherDomainId: teacherDomainId,
+                teacherDomain: teacherDomainNames,
+                teacherDomainIds: domainIds,
                 teacherBootcamps: teacherBootcampNames,
                 activeBootcamps
             }

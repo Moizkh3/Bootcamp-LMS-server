@@ -161,7 +161,10 @@ export const getUsers = async (req, res) => {
     }
 
     if (domainId) {
-      filter.domainId = new mongoose.Types.ObjectId(domainId);
+      filter.$or = [
+        { domainId: new mongoose.Types.ObjectId(domainId) },
+        { teacherDomainIds: new mongoose.Types.ObjectId(domainId) }
+      ];
     }
 
     if (status) {
@@ -194,6 +197,7 @@ export const getUsers = async (req, res) => {
     const users = await User.find(filter)
       .populate("studentBootcampId", "name")
       .populate("teacherBootcampIds", "name")
+      .populate("teacherDomainIds", "name")
       .populate("domainId", "name")
       .sort({ createdAt: -1 });
 
@@ -215,6 +219,7 @@ export const getSingleUser = async (req, res) => {
     const user = await User.findById(req.params.id)
       .populate("studentBootcampId", "name")
       .populate("teacherBootcampIds", "name")
+      .populate("teacherDomainIds", "name")
       .populate("domainId", "name");
 
     if (!user) {
@@ -477,7 +482,7 @@ export async function verifyOtp(req, res) {
 
 export const register = async (req, res) => {
   try {
-    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, password, studentStatus, teacherStatus } = req.body;
+    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, teacherDomainIds, password, studentStatus, teacherStatus } = req.body;
     const userPassword = password || "BMS@2024";
 
     if (!name || !email || !role) {
@@ -521,7 +526,8 @@ export const register = async (req, res) => {
       role,
       studentBootcampId: (role === 'student' && studentBootcampId !== "") ? studentBootcampId : undefined,
       teacherBootcampIds: role === 'teacher' ? teacherBootcampIds : [],
-      domainId: domainId === "" ? null : domainId,
+      domainId: (role === 'student' && domainId !== "") ? domainId : null,
+      teacherDomainIds: role === 'teacher' ? (teacherDomainIds || (domainId ? [domainId] : [])) : [],
       studentStatus: role === 'student' ? (studentStatus || 'enrolled') : undefined,
       teacherStatus: role === 'teacher' ? (teacherStatus || 'active') : undefined,
     });

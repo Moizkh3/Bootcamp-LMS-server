@@ -33,7 +33,27 @@ export async function addDomain(req, res) {
 
 export async function deleteDomain(req, res) {
     try {
-        let domain = await Domain.findByIdAndDelete(req.params.id);
+        const domainId = req.params.id;
+
+        // Check if any assignments are linked to this domain
+        const linkedAssignments = await Assignment.countDocuments({ domain: domainId });
+        if (linkedAssignments > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete domain. It is linked to ${linkedAssignments} assignments.`
+            });
+        }
+
+        // Check if any students are linked to this domain
+        const linkedStudents = await User.countDocuments({ domainId: domainId });
+        if (linkedStudents > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete domain. It is assigned to ${linkedStudents} students.`
+            });
+        }
+
+        let domain = await Domain.findByIdAndDelete(domainId);
 
         if (!domain) {
             return res.status(404).json({
@@ -113,7 +133,28 @@ export async function getAllDomains(req, res) {
                 role: 'student',
                 domainId: domain._id
             });
-            return { ...domain, studentsCount };
+
+            // Dynamically find mentor(s) assigned to this domain
+            const mentors = await User.find({
+                role: 'teacher',
+                teacherDomainIds: domain._id
+            }).select('name profileImage');
+
+            let mentorName = domain.mentorName;
+            let mentorAvatar = domain.mentorAvatar;
+
+            if (mentors.length > 0) {
+                // Use the first found mentor as the primary display
+                mentorName = mentors[0].name;
+                mentorAvatar = mentors[0].profileImage || '';
+            }
+
+            return { 
+                ...domain, 
+                studentsCount,
+                mentorName,
+                mentorAvatar
+            };
         }));
 
         res.status(200).json({
@@ -147,10 +188,29 @@ export async function getDomainById(req, res) {
             domainId: domain._id
         });
 
+        // Dynamically find mentor(s) assigned to this domain
+        const mentors = await User.find({
+            role: 'teacher',
+            teacherDomainIds: domain._id
+        }).select('name profileImage');
+
+        let mentorName = domain.mentorName;
+        let mentorAvatar = domain.mentorAvatar;
+
+        if (mentors.length > 0) {
+            mentorName = mentors[0].name;
+            mentorAvatar = mentors[0].profileImage || '';
+        }
+
         res.status(200).json({
             success: true,
             message: 'Domain fetched successfully',
-            data: { ...domain.toObject(), studentsCount }
+            data: { 
+                ...domain.toObject(), 
+                studentsCount,
+                mentorName,
+                mentorAvatar
+            }
         });
 
     } catch (error) {
