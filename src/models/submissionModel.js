@@ -55,6 +55,10 @@ const submittedassignmentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    isSubmit: {
+      type: Boolean,
+      default: false,
+    },
   },
 
   { timestamps: true },

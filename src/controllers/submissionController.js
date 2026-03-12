@@ -19,6 +19,24 @@ export const createSubmission = async (req, res) => {
       fs.unlinkSync(req.file.path);
     }
 
+    // Check if submission already exists
+    const existingSubmission = await Submission.findOne({
+      assignment: req.body.assignment,
+      student: req.user._id,
+    });
+
+    if (existingSubmission) {
+      if (fileUrl) {
+         // Cleanup uploaded file if submission fails
+         const publicId = fileUrl.split('/').pop().split('.')[0];
+         await cloudinary.uploader.destroy(`bootcamp-submissions/${publicId}`);
+      }
+      return res.status(400).json({
+        success: false,
+        message: "You have already submitted this assignment.",
+      });
+    }
+
     const submission = await Submission.create({
       assignment: req.body.assignment,
       student: req.user._id,
@@ -29,6 +47,7 @@ export const createSubmission = async (req, res) => {
       figmaUrl: req.body.figmaUrl,
       note: req.body.note,
       referenceFile: fileUrl,
+      isSubmit: true,
     });
 
     res.status(201).json({

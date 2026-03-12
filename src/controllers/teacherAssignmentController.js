@@ -85,7 +85,7 @@ export const getAssignmentById = async (req, res) => {
 // get assignments
 export const getAssignments = async (req, res) => {
   try {
-    const { bootcampId } = req.query;
+    const { bootcampId, teacherId } = req.query;
     let query = {};
 
     // If teacher, restrict to their assignments or their assigned bootcamps
@@ -99,6 +99,11 @@ export const getAssignments = async (req, res) => {
     // If bootcampId is provided (from Admin or Teacher filter), apply it
     if (bootcampId) {
       query.bootcamp = bootcampId;
+    }
+
+    // If teacherId is provided (by Admin), filter by it
+    if (teacherId && req.user.role === 'admin') {
+        query.teacher = teacherId;
     }
 
     const assignments = await Assignment.find(query)

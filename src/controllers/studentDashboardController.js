@@ -158,7 +158,8 @@ export async function getStudentAssignments(req, res) {
             return {
                 ...asm.toObject(),
                 submissionStatus: submission ? (submission.status === 'graded' ? 'graded' : submission.status === 're-submit' ? 're-submit' : 'submitted') : 'not-started',
-                submissionId: submission ? submission._id : null
+                submissionId: submission ? submission._id : null,
+                isSubmit: !!submission
             };
         });
 

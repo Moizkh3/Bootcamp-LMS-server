@@ -180,9 +180,17 @@ export const getTeacherSubmissions = async (req, res) => {
             })
             .sort({ createdAt: -1 });
 
+        const processedSubmissions = submissions.map(sub => {
+            const subObj = sub.toObject ? sub.toObject() : sub;
+            return {
+                ...subObj,
+                isSubmit: !!subObj.student
+            };
+        });
+
         res.status(200).json({
             success: true,
-            data: submissions
+            data: processedSubmissions
         });
     } catch (error) {
         res.status(500).json({
