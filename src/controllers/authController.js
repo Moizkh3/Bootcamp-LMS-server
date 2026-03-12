@@ -121,6 +121,7 @@ export async function login(req, res) {
         role: user.role,
         status: user.status,
         isFirstLogin,
+        name:user.name
       })
     }
 
