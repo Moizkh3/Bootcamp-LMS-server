@@ -5,10 +5,10 @@ export const createAnnouncement = async (req, res) => {
     try {
         const { title, description, bootcampId, domainId } = req.body;
 
-        if (!title || !description || !bootcampId) {
+        if (!title || !description) {
             return res.status(400).json({
                 success: false,
-                message: "Title, description, and bootcampId are required",
+                message: "Title and description are required",
             });
         }
 
@@ -40,15 +40,28 @@ export const getAnnouncements = async (req, res) => {
         let filter = {};
         
         if (bootcampId && mongoose.Types.ObjectId.isValid(bootcampId)) {
-            filter.bootcampId = new mongoose.Types.ObjectId(bootcampId);
+            // Include both global announcements AND bootcamp-specific ones
+            filter.$or = [
+                { bootcampId: new mongoose.Types.ObjectId(bootcampId) },
+                { bootcampId: null },
+                { bootcampId: { $exists: false } }
+            ];
         }
         
-        if (domainId && domainId !== 'undefined' && mongoose.Types.ObjectId.isValid(domainId)) {
-            filter.$or = [
-                { domainId: new mongoose.Types.ObjectId(domainId) },
-                { domainId: null },
-                { domainId: { $exists: false } }
-            ];
+        if (domainId && domainId !== 'all' && domainId !== 'undefined' && mongoose.Types.ObjectId.isValid(domainId)) {
+            // Further narrow down OR keep it broad if domain is 'all'
+            // For students, we want them to see (Global) OR (their Bootcamp) AND (Global Domain OR their Domain)
+            // But usually $or logic is simpler: (Global) OR (My Bootcamp + My Domain)
+            
+            // Refined logic:
+            // 1. If no bootcampId and no domainId -> Global
+            // 2. If bootcampId and no domainId -> Bootcamp Wide
+            // 3. If bootcampId and domainId -> Domain specific in Bootcamp
+            
+            // To make it easy: Filter where (bootcampId matches OR is global) AND (domainId matches OR is global)
+            const bootcampFilter = { $or: [{ bootcampId: new mongoose.Types.ObjectId(bootcampId) }, { bootcampId: null }, { bootcampId: { $exists: false } }] };
+            const domainFilter = { $or: [{ domainId: new mongoose.Types.ObjectId(domainId) }, { domainId: null }, { domainId: { $exists: false } }] };
+            filter = { $and: [bootcampFilter, domainFilter] };
         }
 
         console.log("ANNOUNCEMENT_FILTER:", JSON.stringify(filter));

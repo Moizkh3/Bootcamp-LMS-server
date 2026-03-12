@@ -1,4 +1,5 @@
 import Progress from "../models/dailyProgressModel.js";
+import User from "../models/user.js";
 
 export const submitProgress = async (req, res) => {
   try {
@@ -174,5 +175,36 @@ export const reviewStandup = async (req, res) => {
   } catch (error) {
     console.error(`[ReviewStandup] Error: ${error.message}`);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Admin get all progress (optional domain filter)
+export const getAllProgress = async (req, res) => {
+  try {
+    const { domainId } = req.query;
+    let query = {};
+
+    if (domainId && domainId !== 'all') {
+      const studentsInDomain = await User.find({ domainId, role: 'student' }).select('_id');
+      const studentIds = studentsInDomain.map(s => s._id);
+      query.studentId = { $in: studentIds };
+    }
+
+    const progress = await Progress.find(query)
+      .populate("studentId", "name email rollNo domainId")
+      .populate("bootcampId", "name")
+      .populate("mentor", "name")
+      .sort({ date: -1, createdAt: -1 });
+
+    res.status(200).send({
+      success: true,
+      message: "All progress fetched successfully",
+      data: progress,
+    });
+  } catch (error) {
+    res.status(500).send({
+      success: false,
+      message: error.message,
+    });
   }
 };

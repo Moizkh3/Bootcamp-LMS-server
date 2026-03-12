@@ -23,7 +23,7 @@ const assignmentSchema = new mongoose.Schema(
       type: String,
       trim: true,
       validate: {
-        validator: (value) => validator.isURL(value),
+        validator: (value) => !value || validator.isURL(value),
         message: "Document URL is not valid",
       },
     },
