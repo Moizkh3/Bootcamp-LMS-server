@@ -31,6 +31,17 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "mobiletoken", "ismobileapp"]
 };
 
+// Middleware to ensure DB connection
+const ensureDB = async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+app.use(ensureDB);
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
@@ -75,17 +86,15 @@ app.use((err, req, res, next) => {
 });
 
 // Database connection
-connectDB()
-  .then(() => {
-    // Only start the server if not running on Vercel
-    if (process.env.NODE_ENV !== 'production') {
-      app.listen(PORT, () => {
-        console.log(`server is running on http://localhost:${PORT}`);
-      });
-    }
-  })
-  .catch((err) => {
-    console.error("Failed to connect to DB:", err);
+// Start server for local development
+if (process.env.NODE_ENV !== 'production') {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`server is running on http://localhost:${PORT}`);
+    });
+  }).catch(err => {
+    console.error("Local DB connection error:", err);
   });
+}
 
 export default app;
