@@ -66,12 +66,11 @@ export const updateProgress = async (req, res) => {
 
     const now = new Date();
     const created = new Date(progress.createdAt);
-
     const diff = (now - created) / (1000 * 60);
 
-    if (diff > 20) {
+    if (diff > 120) {
       return res.status(403).send({
-        message: "Progress can only be edited within 20 minutes",
+        message: "Progress can only be edited within 2 hours",
       });
     }
     const updatedProgress = await Progress.findByIdAndUpdate(
@@ -101,10 +100,20 @@ export const getStudentProgress = async (req, res) => {
       .populate("mentor", "name")
       .sort({ date: -1, createdAt: -1 });
 
+    const now = new Date();
+    const progressWithEditable = progress.map((p) => {
+      const created = new Date(p.createdAt);
+      const diff = (now - created) / (1000 * 60);
+      return {
+        ...p.toObject(),
+        isEditable: diff <= 120,
+      };
+    });
+
     res.status(200).send({
       success: true,
       message: "student progress fetched successfully",
-      data: progress,
+      data: progressWithEditable,
     });
   } catch (error) {
     res.status(500).send({

@@ -33,10 +33,14 @@ export async function isSubmitTodayStandup(req, res) {
             lastStandupDate.getDate() === today.getDate()
         );
 
+        const diff = (today - lastStandupDate) / (1000 * 60);
+        const isEditable = diff <= 120;
+
         res.status(200).json({
             success: true,
             message: "Today's standup status fetched successfully",
             isSubmitTodayStandup,
+            isEditable,
             todayStandup: isSubmitTodayStandup ? lastStandup[0] : null
         })
 
