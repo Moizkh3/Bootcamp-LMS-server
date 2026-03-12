@@ -24,6 +24,16 @@ const announcementSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
+  },
+
+  creatorRole: {
+    type: String,
+    enum: ['admin', 'teacher'],
+  },
+
+  creatorName: {
+    type: String,
+    trim: true,
   }
 
 }, { timestamps: true });

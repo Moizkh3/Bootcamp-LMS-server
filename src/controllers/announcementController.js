@@ -12,12 +12,16 @@ export const createAnnouncement = async (req, res) => {
             });
         }
 
+        console.log(`CREATE_ANNOUNCEMENT: user=${req.user._id}, role=${req.user.role}, name=${req.user.name}`);
+        
         const announcement = await Announcement.create({
             title,
             description,
             bootcampId,
             domainId,
             createdBy: req.user._id,
+            creatorRole: req.user.role,
+            creatorName: req.user.name,
         });
 
         res.status(201).json({
@@ -66,13 +70,25 @@ export const getAnnouncements = async (req, res) => {
 
         console.log("ANNOUNCEMENT_FILTER:", JSON.stringify(filter));
         const announcements = await Announcement.find(filter)
-            .populate("createdBy", "name")
+            .populate("createdBy", "name role")
             .sort({ createdAt: -1 });
         console.log(`ANNOUNCEMENTS_FOUND: ${announcements.length}`);
 
+        // Normalize: for old announcements missing creatorRole, fall back to populated createdBy.role
+        const normalized = announcements.map(a => {
+            const obj = a.toObject();
+            if (!obj.creatorRole && obj.createdBy?.role) {
+                obj.creatorRole = obj.createdBy.role;
+            }
+            if (!obj.creatorName && obj.createdBy?.name) {
+                obj.creatorName = obj.createdBy.name;
+            }
+            return obj;
+        });
+
         res.status(200).json({
             success: true,
-            data: announcements,
+            data: normalized,
         });
     } catch (error) {
         res.status(500).json({
