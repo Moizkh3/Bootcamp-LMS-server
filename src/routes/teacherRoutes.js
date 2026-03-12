@@ -13,6 +13,11 @@ import {
     getStudentAssignments
 } from "../controllers/teacherAssignmentController.js";
 import {
+    getTeacherStudents,
+    getStudentFullProgress,
+    giveStandupFeedback
+} from "../controllers/teacherStudentController.js";
+import {
     getTeacherStats,
     getTeacherSubmissions,
     getSubmissionById
@@ -32,6 +37,11 @@ router.delete("/delete-assignment/:id", checkAuth, checkTeacher, deleteAssignmen
 router.put("/update-deadline/:id", checkAuth, checkTeacher, updateDeadline);
 router.post("/review-submission/:submissionId", checkAuth, checkTeacher, reviewSubmission);
 router.get("/get-assignment-submissions/:assignmentId", checkAuth, checkTeacher, getAssignmentSubmissions);
-router.get("/get-student-assignments", checkAuth, getStudentAssignments)
+router.get("/get-student-assignments", checkAuth, getStudentAssignments);
+
+// Student Management for Teachers
+router.get("/students", checkAuth, checkTeacher, getTeacherStudents);
+router.get("/student-progress/:studentId", checkAuth, checkTeacher, getStudentFullProgress);
+router.post("/standup-feedback/:standupId", checkAuth, checkTeacher, giveStandupFeedback);
 
 export default router;

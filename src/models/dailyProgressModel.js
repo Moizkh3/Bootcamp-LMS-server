@@ -48,6 +48,10 @@ const progressSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    feedback: {
+      type: String,
+      default: "",
+    },
     reviewedAt: {
       type: Date,
     },
