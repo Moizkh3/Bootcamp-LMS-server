@@ -112,19 +112,29 @@ export const getAssignments = async (req, res) => {
       .populate("teacher", "name")
       .sort({ createdAt: -1 });
 
-    // Enrich with submissionsCount and totalStudentsCount
+    // Enrich with submissionsCount and totalStudentsCount, plus submitted students array
     const enriched = await Promise.all(assignments.map(async (a) => {
-      const submissionsCount = await SubmitAssignment.countDocuments({ assignment: a._id });
+      // Find all submissions for this assignment
+      const allSubmissions = await SubmitAssignment.find({ assignment: a._id }).select('student');
+      
+      const submissionsCount = allSubmissions.length;
+      const submittedStudents = allSubmissions.map(sub => sub.student.toString());
+      
       const bootcampId = a.bootcamp?._id || a.bootcamp;
       const totalStudentsCount = bootcampId ? await User.countDocuments({
         role: "student",
         studentBootcampId: bootcampId,
         studentStatus: "enrolled"
       }) : 0;
+      
+      const isSubmit = submittedStudents.includes(req.user._id.toString());
+
       return {
         ...a.toObject(),
         submissionsCount,
-        totalStudentsCount
+        totalStudentsCount,
+        submittedStudents,
+        isSubmit
       };
     }));
 
@@ -176,11 +186,18 @@ export const updatedAssignment = async (req, res) => {
 // delete assignment
 export const deleteAssignment = async (req, res) => {
   try {
-    const assignment = await Assignment.findOne({
-      _id: req.params.id,
-      teacher: req.user._id,
-      bootcamp: { $in: req.user.teacherBootcampIds || [] },
-    });
+    let query = { _id: req.params.id };
+
+    if (req.user.role !== 'admin') {
+      query.teacher = req.user._id;
+      if (req.user.teacherBootcampIds && req.user.teacherBootcampIds.length > 0) {
+          query.bootcamp = { $in: req.user.teacherBootcampIds };
+      } else {
+          query.bootcamp = { $exists: true }; // Dummy condition if no bootcamps to prevent unauthorized access
+      }
+    }
+
+    const assignment = await Assignment.findOne(query);
 
     if (!assignment) {
       return res.status(404).send({
