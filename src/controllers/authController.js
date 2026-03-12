@@ -8,6 +8,15 @@ import dotenv from "dotenv";
 dotenv.config();
 import sendEmail from "../utils/sendMail.js";
 import utils from "../models/utilsSchema.js";
+import XLSX from "xlsx";
+
+// Helper: parse CSV/Excel buffer into array of objects
+function excelBufferToArray(buffer) {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  return XLSX.utils.sheet_to_json(sheet);
+}
 
 let cookiesConfig = {
   httpOnly: true,
@@ -538,6 +547,7 @@ export const register = async (req, res) => {
         const bootcampId = role === 'student' ? studentBootcampId : teacherBootcampIds[0];
         const bc = await Bootcamp.findById(bootcampId);
         const dom = await Domain.findById(domainId);
+        const loginLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
 
         await sendEmail({
           to: user.email,
@@ -545,9 +555,11 @@ export const register = async (req, res) => {
           template: role === 'teacher' ? 'teacher-wellcome-email' : 'student-wellcome-email',
           context: {
             name: user.name,
+            email: user.email,
+            password: userPassword,
             bootcampName: bc?.name || 'Assigned Bootcamp',
             domainName: dom?.name || 'General',
-            setupPasswordLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/set-password?email=${user.email}`
+            loginLink,
           }
         });
       }
@@ -565,5 +577,88 @@ export const register = async (req, res) => {
       success: false,
       message: err.message,
     });
+  }
+};
+
+// ─── BULK REGISTER STUDENTS FROM CSV/EXCEL ───────────────────────────────────
+export const registerBulkUsers = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "No file uploaded" });
+    }
+
+    let users = excelBufferToArray(req.file.buffer);
+
+    if (!users || users.length === 0) {
+      return res.status(400).json({ success: false, message: "No users found in the file" });
+    }
+
+    let utilDoc = await utils.findOne();
+    if (!utilDoc) {
+      utilDoc = new utils({ rollNo: 1000 });
+    }
+
+    const { bootcampId, domainId } = req.body;
+
+    if (!bootcampId || !domainId) {
+      return res.status(400).json({ success: false, message: "bootcampId and domainId are required" });
+    }
+
+    const defaultPassword = "BMS@2024";
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    const usersToInsert = [];
+    for (let user of users) {
+      utilDoc.rollNo = utilDoc.rollNo + 1;
+      usersToInsert.push({
+        name: user.name || user.Name,
+        email: user.email || user.Email,
+        password: hashedPassword,
+        rollNo: utilDoc.rollNo,
+        domainId,
+        role: "student",
+        studentStatus: "enrolled",
+        studentBootcampId: bootcampId,
+        isFirstLogin: true,
+      });
+    }
+
+    const newUsers = await User.insertMany(usersToInsert);
+
+    await User.populate(newUsers, [
+      { path: "studentBootcampId", select: "name" },
+      { path: "domainId", select: "name" },
+    ]);
+
+    await utilDoc.save();
+
+    // Respond immediately
+    res.status(201).json({
+      success: true,
+      message: `${newUsers.length} student(s) registered successfully`,
+    });
+
+    // Send welcome emails (non-blocking, after response sent)
+    for (let user of newUsers) {
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: "Welcome to the Bootcamp!",
+          template: "student-wellcome-email",
+          context: {
+            name: user.name,
+            email: user.email,
+            password: defaultPassword,
+            bootcampName: user.studentBootcampId?.name || "Assigned Bootcamp",
+            domainName: user.domainId?.name || "General",
+            loginLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+          },
+        });
+      } catch (emailErr) {
+        console.error(`Failed to send email to ${user.email}:`, emailErr.message);
+      }
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

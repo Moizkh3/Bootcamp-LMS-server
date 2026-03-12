@@ -1,39 +1,49 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <style>
-        .button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 8px;
-        }
+        body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
+        .container { max-width: 600px; margin: 30px auto; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        .header { background: linear-gradient(135deg, #11998e, #38ef7d); padding: 30px; text-align: center; color: white; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .body { padding: 30px; }
+        .credentials-box { background: #f0fff4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 16px 20px; margin: 20px 0; }
+        .credentials-box p { margin: 6px 0; font-size: 14px; }
+        .credentials-box strong { color: #166534; }
+        .btn { display: inline-block; background: #11998e; color: white !important; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 10px; }
+        .footer { padding: 20px 30px; font-size: 12px; color: #888; border-top: 1px solid #eee; }
     </style>
 </head>
-
 <body>
-    <h2>Welcome to the Bootcamp Management System!</h2>
-    <p>Hello {{name}},</p>
-    <p>An Admin has added you as a <strong>Teacher</strong> for the following:</p>
-    <ul>
-        <li><strong>Bootcamp:</strong> {{bootcampName}}</li>
-        <li><strong>Domain:</strong> {{domainName}}</li>
-    </ul>
-    <p>Your account has been created[cite: 134]. Before you can access your dashboard to manage assignments and student
-        progress, please set your password[cite: 135, 161].</p>
+    <div class="container">
+        <div class="header">
+            <h1>👋 Welcome, Teacher!</h1>
+        </div>
+        <div class="body">
+            <p>Hello <strong>{{name}}</strong>,</p>
+            <p>An Admin has added you as a <strong>Teacher</strong> in the Bootcamp Management System. Your account is now active.</p>
 
-    <a href="{{setupPasswordLink}}" class="button">Set Your Password</a>
+            <ul>
+                <li><strong>Bootcamp:</strong> {{bootcampName}}</li>
+                <li><strong>Domain:</strong> {{domainName}}</li>
+            </ul>
 
-    <p>If the button doesn't work, copy and paste this link: {{setupPasswordLink}}</p>
-    <p>Best regards,<br>BMS Administration</p>
+            <p>Here are your login credentials:</p>
+            <div class="credentials-box">
+                <p>📧 <strong>Email:</strong> {{email}}</p>
+                <p>🔑 <strong>Password:</strong> {{password}}</p>
+            </div>
+
+            <p>Please log in and change your password immediately.</p>
+
+            <a href="{{loginLink}}" class="btn">Login to Dashboard</a>
+            <p style="font-size:12px; color:#888; margin-top:8px;">If the button doesn't work, copy and paste this link: {{loginLink}}</p>
+
+            <p>Best regards,<br/>BMS Administration</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message from the Bootcamp Management System. Please do not reply to this email.</p>
+        </div>
+    </div>
 </body>
-
 </html>

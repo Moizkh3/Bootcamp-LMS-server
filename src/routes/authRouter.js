@@ -1,7 +1,10 @@
 import express from "express"
-import { changePassword, getProfile, login, logout, register, sentOtpForResetPassword, verifyOtp } from "../controllers/authController.js"
+import { changePassword, getProfile, login, logout, register, registerBulkUsers, sentOtpForResetPassword, verifyOtp } from "../controllers/authController.js"
 import checkAuth from "../middlewares/checkAuth.js";
+import multer from "multer";
 
+// Store file in memory (buffer) since we parse it directly
+const upload = multer({ storage: multer.memoryStorage() });
 
 const authRouter = express.Router()
 
@@ -12,8 +15,6 @@ authRouter.put('/change-password', checkAuth, changePassword);
 authRouter.post('/getVerificationEmailForForgetPassword', sentOtpForResetPassword);
 authRouter.post('/verifyOtp', verifyOtp);
 authRouter.post('/register', register);
-
-
-
+authRouter.post('/bulk-register', checkAuth, upload.single('file'), registerBulkUsers);
 
 export default authRouter;
