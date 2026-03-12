@@ -31,7 +31,7 @@ router.get("/get-submissions", checkAuth, checkTeacher, getTeacherSubmissions);
 router.get("/get-submission/:id", checkAuth, checkTeacher, getSubmissionById);
 router.post("/create-assignment", upload.single("document"), checkAuth, checkTeacher, createAssignment);
 router.put("/update-assignment/:id", checkAuth, checkTeacher, updatedAssignment);
-router.get("/get-assignments", checkAuth, checkTeacher, getAssignments);
+router.get("/get-assignments", checkAuth, getAssignments);
 router.get("/get-assignment/:id", checkAuth, getAssignmentById);
 router.delete("/delete-assignment/:id", checkAuth, checkTeacher, deleteAssignment);
 router.put("/update-deadline/:id", checkAuth, checkTeacher, updateDeadline);

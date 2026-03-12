@@ -113,7 +113,7 @@ export async function login(req, res) {
     if (isMobileApp) {
       return res.status(200).json({
         success: true,
-        userId: user._id,
+        _id: user._id,
         token,
         message: "Logged in successfully",
         bootcampId: user.bootcampId,
