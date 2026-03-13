@@ -7,7 +7,7 @@ import fs from "fs";
 // create assignment
 export const createAssignment = async (req, res) => {
   try {
-    const { title, description, deadline, bootcamp, domain, requiredLinks } = req.body;
+    const { title, description, deadline, bootcamp, domain, requiredLinks, module } = req.body;
 
     if (!title || !description || !deadline || !bootcamp || !domain) {
       return res.status(400).send({
@@ -48,6 +48,7 @@ export const createAssignment = async (req, res) => {
       bootcamp: bootcamp,
       deadline: deadlineDate,
       teacher: req.user._id,
+      module: module || "N/A",
       requiredLinks: requiredLinks ? (Array.isArray(requiredLinks) ? requiredLinks : JSON.parse(requiredLinks)) : ["frontendGithubUrl"],
     });
 
@@ -167,7 +168,18 @@ export const updatedAssignment = async (req, res) => {
       });
     }
 
-    Object.assign(assignment, req.body);
+    const { requiredLinks, deadline } = req.body;
+    const updateData = { ...req.body };
+
+    if (requiredLinks) {
+      updateData.requiredLinks = typeof requiredLinks === 'string' ? JSON.parse(requiredLinks) : requiredLinks;
+    }
+
+    if (deadline) {
+      updateData.deadline = new Date(deadline);
+    }
+
+    Object.assign(assignment, updateData);
     await assignment.save();
 
     res.status(200).send({

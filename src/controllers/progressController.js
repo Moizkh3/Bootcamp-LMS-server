@@ -1,5 +1,7 @@
 import Progress from "../models/dailyProgressModel.js";
 import User from "../models/user.js";
+import mongoose from "mongoose";
+import fs from 'fs';
 
 export const submitProgress = async (req, res) => {
   try {
@@ -26,7 +28,7 @@ export const submitProgress = async (req, res) => {
     }
 
     const progressData = {
-      studentId: req.user._id,
+      studentId: new mongoose.Types.ObjectId(req.user._id),
       bootcampId: req.user.studentBootcampId || req.user.bootcampId,
       yesterdayWork: finalYesterdayWork,
       todayPlan: finalTodayPlan,
@@ -126,11 +128,15 @@ export const getStudentProgress = async (req, res) => {
 export const getBootcampProgress = async (req, res) => {
   try {
     const { bootcampId } = req.params;
-
-    const progress = await Progress.find({
-      bootcampId,
-    })
-      .populate("studentId", "name email rollNo")
+    
+    // Auto-fix: Convert any string IDs to ObjectIds if they exist
+    // This is temporary until all records are converted
+    const progress = await Progress.find({ bootcampId })
+      .populate({
+        path: "studentId",
+        model: "User",
+        select: "name email rollNo"
+      })
       .sort({ date: -1, createdAt: -1 });
 
     res.status(200).send({

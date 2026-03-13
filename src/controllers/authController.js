@@ -436,6 +436,7 @@ export async function sentOtpForResetPassword(req, res) {
 
 export async function verifyOtp(req, res) {
   try {
+    console.log('request recieved')
     let { otp, email, newPassword } = req.body;
     let user = await User.findOne({ email });
     let currentTime = new Date();
@@ -447,6 +448,9 @@ export async function verifyOtp(req, res) {
         message: "Otp has expired",
       });
     }
+    console.log(user.otp);
+    console.log('my otp')
+    console.log(otp);
     let isOtpCorrect = await bcrypt.compare(otp, user.otp);
     if (!isOtpCorrect) {
       return res.status(401).json({
@@ -490,6 +494,8 @@ export const register = async (req, res) => {
     } = req.body;
     const userPassword = password || "BMS@2024";
 
+    console.log(req.body)
+
     if (!name || !email || !role) {
       return res.status(400).send({
         success: false,
@@ -527,19 +533,12 @@ export const register = async (req, res) => {
       email,
       password: hashed,
       role,
-      studentBootcampId:
-        role === "student" && studentBootcampId !== ""
-          ? studentBootcampId
-          : undefined,
-      teacherBootcampIds: role === "teacher" ? teacherBootcampIds : [],
-      domainId: role === "student" && domainId !== "" ? domainId : null,
-      teacherDomainIds:
-        role === "teacher"
-          ? teacherDomainIds || (domainId ? [domainId] : [])
-          : [],
-      studentStatus:
-        role === "student" ? studentStatus || "enrolled" : undefined,
-      teacherStatus: role === "teacher" ? teacherStatus || "active" : undefined,
+      studentBootcampId: (role === 'student' && studentBootcampId !== "") ? studentBootcampId : undefined,
+      teacherBootcampIds: role === 'teacher' ? teacherBootcampIds : [],
+      domainId: (role === 'student' && domainId !== "") ? domainId : null,
+      teacherDomainIds: (role === 'teacher' ? teacherDomainIds : []),
+      studentStatus: role === 'student' ? (studentStatus || 'enrolled') : undefined,
+      teacherStatus: role === 'teacher' ? (teacherStatus || 'active') : undefined,
       isFirstLogin: true,
     });
 
@@ -559,30 +558,90 @@ export const register = async (req, res) => {
     let user = await newUser.save();
 
     // Send Welcome Email
-    try {
-      if (role === "teacher" || role === "student") {
-        const bootcampId =
-          role === "student" ? studentBootcampId : teacherBootcampIds[0];
-        const bc = await Bootcamp.findById(bootcampId);
-        const dom = await Domain.findById(domainId);
-        const loginLink = `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`;
+    // try {
+    //   if (role === 'teacher' || role === 'student') {
+    //     const bootcampId = role === 'student' ? studentBootcampId : teacherBootcampIds[0];
+    //     const bc = await Bootcamp.findById(bootcampId);
+    //     const dom = await Domain.findById(domainId);
+    //     console.log(dom)
+    //     const loginLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
 
-        await sendEmail({
-          to: user.email,
-          subject: `Welcome to BMS! - ${name}`,
-          template:
-            role === "teacher"
-              ? "teacher-wellcome-email"
-              : "student-wellcome-email",
+    //     await sendEmail({
+    //       to: user.email,
+    //       subject: `Welcome to BMS! - ${name}`,
+    //       template: role === 'teacher' ? 'teacher-wellcome-email' : 'student-wellcome-email',
+    //       context: {
+    //         name: user.name,
+    //         email: user.email,
+    //         password: userPassword,
+    //         bootcampName: bc?.name || 'Assigned Bootcamp',
+    //         domainName: dom?.name || 'General',
+    //         loginLink,
+    //       }
+    //     });
+    //   }
+    // } catch (emailErr) {
+    //   console.error("Failed to send welcome email:", emailErr);
+    // }
+
+    try {
+      if (role === 'teacher' || role === 'student') {
+
+        let bootcampName = "Assigned Bootcamp";
+        let domainName = "General";
+
+        // Handle Bootcamps
+        if (role === "student") {
+          const bc = await Bootcamp.findById(studentBootcampId);
+          bootcampName = bc?.name || bootcampName;
+        } else {
+          const bootcamps = await Bootcamp.find({ _id: { $in: teacherBootcampIds } });
+          bootcampName = bootcamps.map(b => b.name).join(", ") || bootcampName;
+        }
+
+        // Handle Domains
+        if (role === "student") {
+          const dom = await Domain.findById(domainId);
+          domainName = dom?.name || domainName;
+        } else {
+          const domains = await Domain.find({ _id: { $in: teacherDomainIds } });
+          domainName = domains.map(d => d.name).join(", ") || domainName;
+        }
+
+        const loginLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`;
+
+        if(role === 'student'){
+
+          await sendEmail({
+            to: user.email,
+            subject: "Welcome to the Bootcamp!",
+            template: "student-wellcome-email",
           context: {
             name: user.name,
             email: user.email,
             password: userPassword,
-            bootcampName: bc?.name || "Assigned Bootcamp",
-            domainName: dom?.name || "General",
+            bootcampName,
+            domainName,
             loginLink,
           },
         });
+
+      } else if(role === 'teacher'){
+        await sendEmail({
+          to: user.email,
+          subject: "Welcome to the Bootcamp!",
+          template: "teacher-wellcome-email",
+          context: {
+            name: user.name,
+            email: user.email,
+            password: userPassword,
+            bootcampName,
+            domainName,
+            loginLink,
+          },
+        });
+      }
+        
       }
     } catch (emailErr) {
       console.error("Failed to send welcome email:", emailErr);
@@ -669,6 +728,20 @@ export const registerBulkUsers = async (req, res) => {
     // Send welcome emails (non-blocking, after response sent)
     for (let user of newUsers) {
       try {
+        // await sendEmail({
+        //   to: user.email,
+        //   subject: "Welcome to the Bootcamp!",
+        //   template: "student-wellcome-email",
+        //   context: {
+        //     name: user.name,
+        //     email: user.email,
+        //     password: defaultPassword,
+        //     bootcampName: role === 'student' ? user.studentBootcampId?.name || "Assigned Bootcamp" : user.teacherBootcampIds[0]?.name || "Assigned Bootcamp",
+        //     domainName: role === 'student' ? user.domainId?.name || "General" : user.teacherDomainIds[0]?.name || "General",
+        //     loginLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
+        //   },
+        // });
+
         await sendEmail({
           to: user.email,
           subject: "Welcome to the Bootcamp!",
@@ -677,11 +750,21 @@ export const registerBulkUsers = async (req, res) => {
             name: user.name,
             email: user.email,
             password: defaultPassword,
-            bootcampName: user.studentBootcampId?.name || "Assigned Bootcamp",
-            domainName: user.domainId?.name || "General",
+
+            bootcampName:
+              role === "student"
+                ? user.studentBootcampId?.name || "Assigned Bootcamp"
+                : user.teacherBootcampIds?.map(b => b.name).join(", ") || "Assigned Bootcamp",
+
+            domainName:
+              role === "student"
+                ? user.domainId?.name || "General"
+                : user.teacherDomainIds?.map(d => d.name).join(", ") || "General",
+
             loginLink: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
           },
         });
+
       } catch (emailErr) {
         console.error(
           `Failed to send email to ${user.email}:`,

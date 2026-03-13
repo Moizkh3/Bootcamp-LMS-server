@@ -2,6 +2,7 @@ import Domain from '../models/domainSchema.js'
 import User from '../models/user.js'
 import Bootcamp from '../models/bootcampModel.js'
 import mongoose from 'mongoose'
+import Assignment from '../models/assignmentModel.js';
 
 export async function addDomain(req, res) {
     try {
