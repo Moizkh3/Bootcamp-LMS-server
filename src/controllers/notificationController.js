@@ -1,5 +1,6 @@
 import { Announcement } from "../models/announcementModel.js";
 import SubmittedAssignment from "../models/submissionModel.js";
+import { Notification } from "../models/notificationModel.js";
 import User from "../models/user.js";
 import mongoose from "mongoose";
 
@@ -146,12 +147,65 @@ export const getNotifications = async (req, res) => {
     }
 };
 
+export const getMobileNotifications = async (req, res) => {
+    try {
+        const user = req.user;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 15;
+
+        const query = {
+            $or: [
+                { userId: user._id },
+                { bootcampId: user.studentBootcampId },
+            ],
+        };
+
+        const notifications = await Notification.find(query)
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit)
+            .limit(limit);
+
+        const unreadCount = await Notification.countDocuments({ ...query, isRead: false });
+
+        res.status(200).json({
+            success: true,
+            data: notifications,
+            unreadCount,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 export const markNotificationsRead = async (req, res) => {
     try {
-        await User.findByIdAndUpdate(req.user._id, {
+        const user = req.user;
+
+        await User.findByIdAndUpdate(user._id, {
             lastNotificationCheck: new Date()
         });
+
+        await Notification.updateMany(
+            {
+                $or: [
+                    { userId: user._id },
+                    { bootcampId: user.studentBootcampId },
+                ],
+                isRead: false,
+            },
+            { isRead: true }
+        );
+
         res.status(200).json({ success: true, message: "Notifications marked as read" });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const markSingleNotificationRead = async (req, res) => {
+    try {
+        await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
+        res.status(200).json({ success: true, message: "Notification marked as read" });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }

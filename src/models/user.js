@@ -24,12 +24,17 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
 
-    teacherBootcampIds:{
+    expoPushToken: {
+      type: String,
+      default: null,
+    },
+
+    teacherBootcampIds: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Bootcamp",
       required: function () {
         return this.role === "teacher";
-      }
+      },
     },
 
     studentBootcampId: {
@@ -37,7 +42,7 @@ const userSchema = new mongoose.Schema(
       ref: "Bootcamp",
       required: function () {
         return this.role === "student";
-      }
+      },
     },
 
     domainId: {
@@ -45,7 +50,7 @@ const userSchema = new mongoose.Schema(
       ref: "Domain",
       required: function () {
         return this.role === "student";
-      }
+      },
     },
 
     teacherDomainIds: {
@@ -54,7 +59,7 @@ const userSchema = new mongoose.Schema(
       required: function () {
         return this.role === "teacher";
       },
-      default: []
+      default: [],
     },
 
     studentStatus: {
@@ -62,7 +67,7 @@ const userSchema = new mongoose.Schema(
       enum: ["completed", "dropout", "enrolled"],
       required: function () {
         return this.role === "student";
-      }
+      },
     },
 
     teacherStatus: {
@@ -70,17 +75,17 @@ const userSchema = new mongoose.Schema(
       enum: ["active", "inactive"],
       required: function () {
         return this.role === "teacher";
-      }
+      },
     },
 
     otp: {
       type: String,
-      default: null
+      default: null,
     },
 
-    rollNo:{
+    rollNo: {
       type: Number,
-      required: true
+      required: true,
     },
 
     isFirstLogin: {
@@ -89,9 +94,8 @@ const userSchema = new mongoose.Schema(
     },
     lastNotificationCheck: {
       type: Date,
-      default: Date.now
-    }
-
+      default: Date.now,
+    },
   },
   { timestamps: true },
 );

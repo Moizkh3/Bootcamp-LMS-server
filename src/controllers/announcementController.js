@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Announcement } from "../models/announcementModel.js";
+import { sendNotificationToBootcamp } from "../utils/sendNotification.js";
 
 export const createAnnouncement = async (req, res) => {
     try {
@@ -23,6 +24,16 @@ export const createAnnouncement = async (req, res) => {
             creatorRole: req.user.role,
             creatorName: req.user.name,
         });
+
+        // Send push notification to bootcamp students
+        if (bootcampId) {
+            sendNotificationToBootcamp({
+                bootcampId,
+                title: "New Announcement",
+                message: title,
+                type: "assignment",
+            });
+        }
 
         res.status(201).json({
             success: true,
