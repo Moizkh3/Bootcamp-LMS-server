@@ -71,7 +71,7 @@ let cookiesConfig = {
 
 export async function login(req, res) {
   try {
-    let { email, password, isMobileApp } = req.body;
+    let { email, password, isMobileApp, expoPushToken } = req.body;
     let user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({
@@ -92,7 +92,7 @@ export async function login(req, res) {
     let token = jwt.sign(
       {
         userId: user._id,
-        role: user.role
+        role: user.role,
       },
       process.env.JWT_SECRET,
       {
@@ -102,11 +102,16 @@ export async function login(req, res) {
 
     res.cookie("authToken", token, cookiesConfig);
 
+    if (expoPushToken) {
+      user.expoPushToken = expoPushToken;
+      await user.save();
+    }
+
     let isFirstLogin = user.isFirstLogin;
 
     user = user.toObject();
 
-    delete user.password
+    delete user.password;
     user.isFirstLogin = isFirstLogin;
 
     if (isMobileApp) {
@@ -124,19 +129,16 @@ export async function login(req, res) {
         studentStatus: user.studentStatus,
         teacherStatus: user.teacherStatus,
         rollNo: user.rollNo,
-        email: user.email
-      })
+        email: user.email,
+      });
     }
 
     res.status(200).json({
       success: true,
       message: "Logged in successfully",
       data: user,
-      isFirstLogin
-    })
-
-
-
+      isFirstLogin,
+    });
 
     // res.status(200).json(response);
   } catch (error) {
@@ -149,7 +151,16 @@ export async function login(req, res) {
 
 export const getUsers = async (req, res) => {
   try {
-    const { role, bootcampId, domainId, status, startDate, endDate, studentStatus, teacherStatus } = req.query;
+    const {
+      role,
+      bootcampId,
+      domainId,
+      status,
+      startDate,
+      endDate,
+      studentStatus,
+      teacherStatus,
+    } = req.query;
 
     let filter = {};
 
@@ -160,22 +171,19 @@ export const getUsers = async (req, res) => {
     if (bootcampId) {
       filter.$or = [
         { studentBootcampId: new mongoose.Types.ObjectId(bootcampId) },
-        { teacherBootcampIds: new mongoose.Types.ObjectId(bootcampId) }
+        { teacherBootcampIds: new mongoose.Types.ObjectId(bootcampId) },
       ];
     }
 
     if (domainId) {
       filter.$or = [
         { domainId: new mongoose.Types.ObjectId(domainId) },
-        { teacherDomainIds: new mongoose.Types.ObjectId(domainId) }
+        { teacherDomainIds: new mongoose.Types.ObjectId(domainId) },
       ];
     }
 
     if (status) {
-      filter.$or = [
-        { studentStatus: status },
-        { teacherStatus: status }
-      ];
+      filter.$or = [{ studentStatus: status }, { teacherStatus: status }];
     }
 
     if (studentStatus) {
@@ -273,7 +281,8 @@ export const updateUser = async (req, res) => {
   try {
     const updateData = { ...req.body };
     if (updateData.domainId === "") updateData.domainId = null;
-    if (updateData.studentBootcampId === "") updateData.studentBootcampId = null;
+    if (updateData.studentBootcampId === "")
+      updateData.studentBootcampId = null;
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
@@ -300,45 +309,22 @@ export const updateUser = async (req, res) => {
 };
 
 export async function logout(req, res) {
+  const { userid, ismobileapp } = req.headers;
+  console.log(req.headers)
+
+  if ( userid && ismobileapp === 'true') {
+    console.log('request ')
+    let user = await User.findById(userid);
+    user.expoPushToken = null;
+    await user.save();
+  }
+
   res.clearCookie("authToken", cookiesConfig);
   res.status(200).json({
     success: true,
     message: "Logged out successfully",
   });
 }
-
-// export async function register(req, res) {
-//   try {
-//     let { name, email, password, role } = req.body;
-//     let user = await User.findOne({ email });
-//     if (user) {
-//       return res.status(400).json({
-//         success: false,
-//         message: "User already exists",
-//       });
-//     }
-
-//     let newUser = new User({
-//       name,
-//       email,
-//       password,
-//       role,
-//     });
-
-//     let savedUser = await newUser.save();
-
-//     res.status(201).json({
-//       success: true,
-//       message: "User registered successfully",
-//       data: savedUser,
-//     });
-//   } catch (error) {
-//     res.status(500).json({
-//       success: false,
-//       message: error.message,
-//     });
-//   }
-// }
 
 export async function changePassword(req, res) {
   try {
@@ -358,7 +344,8 @@ export async function changePassword(req, res) {
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 8 characters long, contain at least one uppercase letter and one special character.",
+        message:
+          "Password must be at least 8 characters long, contain at least one uppercase letter and one special character.",
       });
     }
 
@@ -372,14 +359,11 @@ export async function changePassword(req, res) {
       message: "Password changed successfully",
       data: updatedUser,
     });
-
   } catch (error) {
-
     res.status(500).json({
       success: false,
       message: error.message,
     });
-
   }
 }
 
@@ -401,21 +385,20 @@ export const getProfile = async (req, res) => {
 
 export async function sentOtpForResetPassword(req, res) {
   try {
-
     let { email } = req.body;
     if (!email) {
       return res.status(401).json({
         success: false,
-        message: 'Email is required'
-      })
+        message: "Email is required",
+      });
     }
 
     let user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Email is not register'
-      })
+        message: "Email is not register",
+      });
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000);
@@ -430,25 +413,24 @@ export async function sentOtpForResetPassword(req, res) {
 
     await sendEmail({
       to: user.email,
-      subject: 'OTP to reset your account password',
-      template: 'passwordReset',
+      subject: "OTP to reset your account password",
+      template: "passwordReset",
       context: {
         otp,
-        expiryTime: '10',
-        name: user.name
-      }
+        expiryTime: "10",
+        name: user.name,
+      },
     });
 
     res.status(200).json({
       success: true,
-      message: 'OTP has successfully sent!'
-    })
-
+      message: "OTP has successfully sent!",
+    });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: error.message
-    })
+      message: error.message,
+    });
   }
 }
 
@@ -463,8 +445,8 @@ export async function verifyOtp(req, res) {
     if (isOtpExpired) {
       return res.status(400).json({
         success: false,
-        message: 'Otp has expired'
-      })
+        message: "Otp has expired",
+      });
     }
     console.log(user.otp);
     console.log('my otp')
@@ -473,8 +455,8 @@ export async function verifyOtp(req, res) {
     if (!isOtpCorrect) {
       return res.status(401).json({
         success: false,
-        message: 'Wrong OTP'
-      })
+        message: "Wrong OTP",
+      });
     }
 
     let newhashedPassword = await bcrypt.hash(newPassword, 10);
@@ -485,22 +467,31 @@ export async function verifyOtp(req, res) {
 
     res.status(200).json({
       success: true,
-      message: 'Password has successfully changed'
-    })
-
-
+      message: "Password has successfully changed",
+    });
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({
       success: false,
-      message: error.message
-    })
+      message: error.message,
+    });
   }
 }
 
 export const register = async (req, res) => {
   try {
-    const { name, email, role, studentBootcampId, teacherBootcampIds, domainId, teacherDomainIds, password, studentStatus, teacherStatus } = req.body;
+    const {
+      name,
+      email,
+      role,
+      studentBootcampId,
+      teacherBootcampIds,
+      domainId,
+      teacherDomainIds,
+      password,
+      studentStatus,
+      teacherStatus,
+    } = req.body;
     const userPassword = password || "BMS@2024";
 
     console.log(req.body)
@@ -512,21 +503,19 @@ export const register = async (req, res) => {
       });
     }
 
-    if (role === 'student' && !studentBootcampId) {
+    if (role === "student" && !studentBootcampId) {
       return res.status(400).send({
         success: false,
         message: "Student bootcamp is required",
       });
     }
 
-    if (role === 'teacher' && teacherBootcampIds?.length === 0) {
+    if (role === "teacher" && teacherBootcampIds?.length === 0) {
       return res.status(400).send({
         success: false,
         message: "Teacher bootcamp is required",
       });
     }
-
-
 
     const existing = await User.findOne({ email });
 
@@ -661,7 +650,7 @@ export const register = async (req, res) => {
     res.status(201).send({
       success: true,
       message: "User created successfully",
-      data: user
+      data: user,
     });
   } catch (err) {
     res.status(500).send({
@@ -675,13 +664,17 @@ export const register = async (req, res) => {
 export const registerBulkUsers = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false, message: "No file uploaded" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No file uploaded" });
     }
 
     let users = excelBufferToArray(req.file.buffer);
 
     if (!users || users.length === 0) {
-      return res.status(400).json({ success: false, message: "No users found in the file" });
+      return res
+        .status(400)
+        .json({ success: false, message: "No users found in the file" });
     }
 
     let utilDoc = await utils.findOne();
@@ -692,7 +685,10 @@ export const registerBulkUsers = async (req, res) => {
     const { bootcampId, domainId } = req.body;
 
     if (!bootcampId || !domainId) {
-      return res.status(400).json({ success: false, message: "bootcampId and domainId are required" });
+      return res.status(400).json({
+        success: false,
+        message: "bootcampId and domainId are required",
+      });
     }
 
     const defaultPassword = "BMS@2024";
@@ -770,7 +766,10 @@ export const registerBulkUsers = async (req, res) => {
         });
 
       } catch (emailErr) {
-        console.error(`Failed to send email to ${user.email}:`, emailErr.message);
+        console.error(
+          `Failed to send email to ${user.email}:`,
+          emailErr.message,
+        );
       }
     }
   } catch (error) {
