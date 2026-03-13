@@ -4,6 +4,7 @@ const domainSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
+        unique: true,
         trim: true
     },
 
@@ -14,7 +15,7 @@ const domainSchema = new mongoose.Schema({
     bootcamp: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Bootcamp',
-        required: true
+        required: false
     },
     status: {
         type: String,

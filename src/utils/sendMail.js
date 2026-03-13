@@ -40,14 +40,29 @@ const handlebarOptions = {
 
 transporter.use("compile", hbs(handlebarOptions));
 
+// Verify transporter on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ SMTP Connection Error:", error.message);
+  } else {
+    console.log("✅ Email transporter is ready to send messages");
+  }
+});
+
 const sendEmail = async ({ to, subject, template, context }) => {
-  await transporter.sendMail({
-    from: `"Bootcamp Tracker" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    template, // e.g., 'verify-email'
-    context,  // e.g., { name: "Hassan", url: "http://..." }
-  });
+  try {
+    const info = await transporter.sendMail({
+      from: `"Bootcamp Tracker" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      template,
+      context,
+    });
+    console.log("📧 Email sent to", to, "| Message ID:", info.messageId);
+  } catch (err) {
+    console.error("❌ Failed to send email to", to, ":", err.message);
+    throw err;
+  }
 };
 
 export default sendEmail

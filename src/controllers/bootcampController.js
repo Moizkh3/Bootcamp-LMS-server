@@ -1,6 +1,7 @@
 import Bootcamp from "../models/bootcampModel.js";
 import User from "../models/user.js";
 import Domain from "../models/domainSchema.js";
+import Assignment from "../models/assignmentModel.js";
 import mongoose from "mongoose";
 
 export async function createBootcamp(req, res) {
@@ -67,9 +68,7 @@ export async function getAllBootcamps(req, res) {
                 role: 'student',
                 studentBootcampId: bootcamp._id
             });
-            const domainCount = await Domain.countDocuments({
-                bootcamp: bootcamp._id
-            });
+            const domainCount = bootcamp.domains?.length || 0;
             return {
                 ...bootcamp.toObject(),
                 studentCount,
@@ -106,9 +105,32 @@ export async function getBootcampById(req, res) {
             studentBootcampId: req.params.id
         });
 
-        const domains = await Domain.find({
-            bootcamp: new mongoose.Types.ObjectId(req.params.id)
-        }).catch(() => []);
+        // 1. Students By Domain Distribution
+        const domains = bootcamp.domains || [];
+        const studentsByDomain = await Promise.all(domains.map(async (domain) => {
+            const count = await User.countDocuments({
+                role: 'student',
+                studentBootcampId: req.params.id,
+                domainId: domain._id
+            });
+            return { name: domain.name, value: count };
+        }));
+
+        // 2. Assignment Stats
+        const assignmentsCount = await Assignment.countDocuments({ bootcamp: req.params.id });
+        const assignmentsByStatusRaw = await Assignment.aggregate([
+            { $match: { bootcamp: new mongoose.Types.ObjectId(req.params.id) } },
+            { $group: { _id: "$status", value: { $sum: 1 } } }
+        ]);
+        const assignmentsByStatus = assignmentsByStatusRaw.map(item => ({
+            name: item._id,
+            value: item.value
+        }));
+
+        const teachersCount = await User.countDocuments({
+            role: 'teacher',
+            teacherBootcampIds: req.params.id
+        });
 
         res.status(200).json({
             success: true,
@@ -116,7 +138,13 @@ export async function getBootcampById(req, res) {
             data: {
                 ...bootcamp.toObject(),
                 domains,
-                studentCount
+                studentCount,
+                stats: {
+                    studentsByDomain,
+                    assignmentsByStatus,
+                    assignmentsCount,
+                    teachersCount
+                }
             }
         })
 
@@ -154,7 +182,7 @@ export async function deleteBootcamp(req, res) {
 
 export async function editBootcamp(req, res) {
     try {
-        let { name, description, startDate, endDate, status } = req.body;
+        let { name, description, startDate, endDate, status, teacherIds } = req.body;
 
         if (!name || !description || !startDate || !endDate || !status) {
             return res.status(400).json({
@@ -180,6 +208,20 @@ export async function editBootcamp(req, res) {
         if (status) bootcamp.status = status;
 
         let updatedBootcamp = await bootcamp.save();
+
+        if (teacherIds && Array.isArray(teacherIds)) {
+            // Remove this bootcamp from teachers who are no longer selected
+            await User.updateMany(
+                { role: 'teacher', teacherBootcampIds: bootcamp._id, _id: { $nin: teacherIds } },
+                { $pull: { teacherBootcampIds: bootcamp._id } }
+            );
+
+            // Add this bootcamp to newly selected teachers
+            await User.updateMany(
+                { role: 'teacher', _id: { $in: teacherIds } },
+                { $addToSet: { teacherBootcampIds: bootcamp._id } }
+            );
+        }
 
         res.status(200).json({
             success: true,

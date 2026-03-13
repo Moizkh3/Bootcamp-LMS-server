@@ -7,10 +7,33 @@ import Assignment from '../models/assignmentModel.js';
 export async function addDomain(req, res) {
     try {
         let { name, description, bootcamp, status, type, mentorName, mentorAvatar } = req.body;
+        
+        // Check if domain with this name already exists
+        let existingDomain = await Domain.findOne({ name: { $regex: new RegExp(`^${name}$`, 'i') } });
+        
+        if (existingDomain) {
+            // Update optional fields if provided
+            if (description) existingDomain.description = description;
+            if (mentorName) existingDomain.mentorName = mentorName;
+            if (mentorAvatar) existingDomain.mentorAvatar = mentorAvatar;
+            
+            // If a bootcamp was passed, we might want to ensure it's linked, 
+            // but the new logic is that Bootcamps hold the array of domain IDs.
+            // So we just return the existing domain.
+            
+            await existingDomain.save();
+
+            return res.status(200).json({
+                success: true,
+                message: 'Existing domain reused',
+                data: existingDomain
+            });
+        }
+
         let domain = new Domain({
             name,
             description,
-            bootcamp,
+            bootcamp: bootcamp || null,
             status,
             type,
             mentorName,
@@ -19,7 +42,7 @@ export async function addDomain(req, res) {
 
         let savedDomain = await domain.save();
 
-        res.status(202).json({
+        res.status(201).json({
             success: true,
             message: 'Domain added successfully',
             data: savedDomain

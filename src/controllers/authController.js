@@ -284,6 +284,10 @@ export const updateUser = async (req, res) => {
     if (updateData.studentBootcampId === "")
       updateData.studentBootcampId = null;
 
+    if (updateData.password) {
+      updateData.password = await bcrypt.hash(updateData.password, 10);
+    }
+
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
     });
@@ -492,7 +496,10 @@ export const register = async (req, res) => {
       studentStatus,
       teacherStatus,
     } = req.body;
-    const userPassword = password || "BMS@2024";
+    
+    // Generate a unique 8-character default password if none is provided
+    const generatedPassword = "BMS@" + Math.floor(1000 + Math.random() * 9000).toString();
+    const userPassword = password || generatedPassword;
 
     console.log(req.body)
 
@@ -691,12 +698,15 @@ export const registerBulkUsers = async (req, res) => {
       });
     }
 
-    const defaultPassword = "BMS@2024";
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-
+    const rawPasswords = [];
     const usersToInsert = [];
     for (let user of users) {
       utilDoc.rollNo = utilDoc.rollNo + 1;
+      
+      const genPassword = "BMS@" + Math.floor(1000 + Math.random() * 9000).toString();
+      const hashedPassword = await bcrypt.hash(genPassword, 10);
+      rawPasswords.push(genPassword);
+
       usersToInsert.push({
         name: user.name || user.Name,
         email: user.email || user.Email,
@@ -726,22 +736,10 @@ export const registerBulkUsers = async (req, res) => {
     });
 
     // Send welcome emails (non-blocking, after response sent)
-    for (let user of newUsers) {
+    for (let i = 0; i < newUsers.length; i++) {
+      let user = newUsers[i];
+      let genPassword = rawPasswords[i];
       try {
-        // await sendEmail({
-        //   to: user.email,
-        //   subject: "Welcome to the Bootcamp!",
-        //   template: "student-wellcome-email",
-        //   context: {
-        //     name: user.name,
-        //     email: user.email,
-        //     password: defaultPassword,
-        //     bootcampName: role === 'student' ? user.studentBootcampId?.name || "Assigned Bootcamp" : user.teacherBootcampIds[0]?.name || "Assigned Bootcamp",
-        //     domainName: role === 'student' ? user.domainId?.name || "General" : user.teacherDomainIds[0]?.name || "General",
-        //     loginLink: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login`,
-        //   },
-        // });
-
         await sendEmail({
           to: user.email,
           subject: "Welcome to the Bootcamp!",
@@ -749,7 +747,7 @@ export const registerBulkUsers = async (req, res) => {
           context: {
             name: user.name,
             email: user.email,
-            password: defaultPassword,
+            password: genPassword,
 
             bootcampName:
               role === "student"
