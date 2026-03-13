@@ -66,15 +66,16 @@ export const getTeacherStats = async (req, res) => {
 
         const assignmentIds = assignments.map(a => a._id);
 
-        // User expectation: If an assignment is created and there's a student, it should show 1 pending.
-        // This implies "Pending" = (Total Assignments * Total Enrolled Students) - (Already Graded)
-        // This gives a count of "tasks requiring attention" (either submission or grading)
-        const gradedCount = await Submission.countDocuments({
+        // 3. Submissions requiring review (status: 'submitted' or 'under-review')
+        const pendingReviewsCount = await Submission.countDocuments({
+            assignment: { $in: assignmentIds },
+            status: { $in: ['submitted', 'under-review'] }
+        });
+
+        const gradedSubmissionsCount = await Submission.countDocuments({
             assignment: { $in: assignmentIds },
             status: 'graded'
         });
-
-        const pendingGrades = Math.max(0, (totalEnrolled * assignmentIds.length) - gradedCount);
 
         // 4. Overdue (placeholder logic)
         const now = new Date();
@@ -135,10 +136,14 @@ export const getTeacherStats = async (req, res) => {
             data: {
                 totalEnrolled,
                 totalAssignments,
-                pendingGrades,
+                activeBootcampsCount: activeBootcamps.length,
+                pendingSubmissionsCount: Math.max(0, (totalEnrolled * totalAssignments) - (gradedSubmissionsCount + pendingReviewsCount)),
+                pendingReviewsCount,
+                gradedSubmissionsCount,
                 overdueAssignments,
                 upcomingDeadlines: formattedDeadlines,
                 recentActivity: formattedActivity,
+                activeBootcamps,
                 teacherDomain: teacherDomainNames,
                 teacherDomainIds: domainIds,
                 teacherBootcamps: teacherBootcampNames,

@@ -45,6 +45,12 @@ const assignmentSchema = new mongoose.Schema(
       ref: "Bootcamp",
       required: true,
     },
+    
+    module: {
+      type: String,
+      trim: true,
+      default: "N/A"
+    },
 
     deadline: {
       type: Date,
