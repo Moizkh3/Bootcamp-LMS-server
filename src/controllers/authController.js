@@ -103,12 +103,11 @@ export async function login(req, res) {
     res.cookie("authToken", token, cookiesConfig);
 
     let isFirstLogin = user.isFirstLogin;
-    user.isFirstLogin = false;
-
-    user = (await user.save()).toObject();
+    
+    user = user.toObject();
 
     delete user.password
-    delete user.isFirstLogin;
+    user.isFirstLogin = isFirstLogin;
 
     if (isMobileApp) {
       return res.status(200).json({
@@ -354,8 +353,18 @@ export async function changePassword(req, res) {
       });
     }
 
+    // Password complexity validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.{8,})/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long, contain at least one uppercase letter and one special character.",
+      });
+    }
+
     let newhashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = newhashedPassword;
+    user.isFirstLogin = false; // Reset first login flag after password change
     let updatedUser = await user.save();
 
     res.status(200).json({
@@ -535,6 +544,7 @@ export const register = async (req, res) => {
       teacherDomainIds: role === 'teacher' ? (teacherDomainIds || (domainId ? [domainId] : [])) : [],
       studentStatus: role === 'student' ? (studentStatus || 'enrolled') : undefined,
       teacherStatus: role === 'teacher' ? (teacherStatus || 'active') : undefined,
+      isFirstLogin: true,
     });
 
     let util = await utils.findOne();
@@ -634,7 +644,7 @@ export const registerBulkUsers = async (req, res) => {
       });
     }
 
-    const newUsers = await User.insertMany(usersToInsert);
+    const newUsers = await User.create(usersToInsert);
 
     await User.populate(newUsers, [
       { path: "studentBootcampId", select: "name" },

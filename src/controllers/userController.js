@@ -6,10 +6,10 @@ import utils from "../models/utilsSchema.js";
 
 export async function getProfile(req, res) {
     try {
-        let user = req.user;
-
+        let user = req.user.toObject ? req.user.toObject() : { ...req.user };
+        
         delete user.password;
-        delete user.isFirstLogin;
+        // Keep isFirstLogin for frontend logic
         delete user.otp;
 
         const { ismobileapp: isMobileApp } = req.headers;
