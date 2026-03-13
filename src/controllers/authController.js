@@ -454,6 +454,7 @@ export async function sentOtpForResetPassword(req, res) {
 
 export async function verifyOtp(req, res) {
   try {
+    console.log('request recieved')
     let { otp, email, newPassword } = req.body;
     let user = await User.findOne({ email });
     let currentTime = new Date();
@@ -465,6 +466,9 @@ export async function verifyOtp(req, res) {
         message: 'Otp has expired'
       })
     }
+    console.log(user.otp);
+    console.log('my otp')
+    console.log(otp);
     let isOtpCorrect = await bcrypt.compare(otp, user.otp);
     if (!isOtpCorrect) {
       return res.status(401).json({
