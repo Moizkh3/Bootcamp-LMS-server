@@ -1,4 +1,5 @@
 import Submission from "../models/submissionModel.js";
+import Assignment from "../models/assignmentModel.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
 import mongoose from "mongoose";
@@ -70,7 +71,14 @@ export const getAllSubmissions = async (req, res) => {
     
     // Build filter
     let filter = {};
-    if (student && student !== "undefined") filter.student = student;
+    
+    // Security: If the user is a student, they should ONLY see their own submissions
+    if (req.user.role === 'student') {
+        filter.student = req.user._id;
+    } else if (student && student !== "undefined") {
+        filter.student = student;
+    }
+    
     if (assignment && assignment !== "undefined") filter.assignment = assignment;
 
     // Handle bootcamp filter

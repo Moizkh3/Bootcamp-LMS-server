@@ -729,13 +729,7 @@ export const registerBulkUsers = async (req, res) => {
 
     await utilDoc.save();
 
-    // Respond immediately
-    res.status(201).json({
-      success: true,
-      message: `${newUsers.length} student(s) registered successfully`,
-    });
-
-    // Send welcome emails (non-blocking, after response sent)
+    // Send welcome emails
     for (let i = 0; i < newUsers.length; i++) {
       let user = newUsers[i];
       let genPassword = rawPasswords[i];
@@ -748,21 +742,17 @@ export const registerBulkUsers = async (req, res) => {
             name: user.name,
             email: user.email,
             password: genPassword,
-
             bootcampName:
-              role === "student"
+              user.role === "student"
                 ? user.studentBootcampId?.name || "Assigned Bootcamp"
                 : user.teacherBootcampIds?.map(b => b.name).join(", ") || "Assigned Bootcamp",
-
             domainName:
-              role === "student"
+              user.role === "student"
                 ? user.domainId?.name || "General"
                 : user.teacherDomainIds?.map(d => d.name).join(", ") || "General",
-
             loginLink: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
           },
         });
-
       } catch (emailErr) {
         console.error(
           `Failed to send email to ${user.email}:`,
@@ -770,6 +760,11 @@ export const registerBulkUsers = async (req, res) => {
         );
       }
     }
+
+    res.status(201).json({
+      success: true,
+      message: `${newUsers.length} student(s) registered successfully and welcome emails sent`,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

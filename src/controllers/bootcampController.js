@@ -106,15 +106,38 @@ export async function getBootcampById(req, res) {
         });
 
         // 1. Students By Domain Distribution
-        const domains = bootcamp.domains || [];
-        const studentsByDomain = await Promise.all(domains.map(async (domain) => {
+        const domainsRaw = bootcamp.domains || [];
+        const domains = await Promise.all(domainsRaw.map(async (domain) => {
+            // Find student count for this domain in this bootcamp
             const count = await User.countDocuments({
                 role: 'student',
                 studentBootcampId: req.params.id,
                 domainId: domain._id
             });
-            return { name: domain.name, value: count };
+
+            // Find mentor(s) assigned to this domain
+            const mentors = await User.find({
+                role: 'teacher',
+                teacherDomainIds: domain._id
+            }).select('name profileImage');
+
+            let mentorName = domain.mentorName;
+            let mentorAvatar = domain.mentorAvatar;
+
+            if (mentors.length > 0) {
+                mentorName = mentors[0].name;
+                mentorAvatar = mentors[0].profileImage || '';
+            }
+
+            return { 
+                ...domain.toObject(), 
+                studentCount: count,
+                mentorName,
+                mentorAvatar
+            };
         }));
+
+        const studentsByDomain = domains.map(d => ({ name: d.name, value: d.studentCount }));
 
         // 2. Assignment Stats
         const assignmentsCount = await Assignment.countDocuments({ bootcamp: req.params.id });
@@ -158,21 +181,69 @@ export async function getBootcampById(req, res) {
 
 export async function deleteBootcamp(req, res) {
     try {
-        let bootcamp = await Bootcamp.findByIdAndDelete(req.params.id);
+        const bootcampId = req.params.id;
+        console.log(`[Bootcamp Delete] Attempting to delete bootcamp: ${bootcampId}`);
+
+        // 1. Check if any students are linked to this bootcamp
+        const linkedStudents = await User.countDocuments({ 
+            role: 'student',
+            studentBootcampId: bootcampId 
+        });
+
+        if (linkedStudents > 0) {
+            console.warn(`[Bootcamp Delete] Refused - ${linkedStudents} students linked to ${bootcampId}`);
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete bootcamp. It is assigned to ${linkedStudents} students.`
+            });
+        }
+
+        // 2. Check if any active domains are linked (though usually domains are shared, we should check if they are "owned" or exclusively linked)
+        // In our case, bootcamps hold domain IDs. We can still delete, but we should clear the bootcamp link if any domain explicitly points to it.
+        // Let's check for any domain that has this bootcamp as its primary bootcamp
+        const linkedDomains = await Domain.countDocuments({ bootcamp: bootcampId });
+        if (linkedDomains > 0) {
+            console.warn(`[Bootcamp Delete] Refused - ${linkedDomains} domains linked to ${bootcampId}`);
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete bootcamp. It is the primary bootcamp for ${linkedDomains} domains. Please reassign domains first.`
+            });
+        }
+
+        // 3. Check for assignments
+        const linkedAssignments = await Assignment.countDocuments({ bootcamp: bootcampId });
+        if (linkedAssignments > 0) {
+            console.warn(`[Bootcamp Delete] Refused - ${linkedAssignments} assignments linked to ${bootcampId}`);
+            return res.status(400).json({
+                success: false,
+                message: `Cannot delete bootcamp. It has ${linkedAssignments} assignments associated with it.`
+            });
+        }
+
+        let bootcamp = await Bootcamp.findByIdAndDelete(bootcampId);
+        
         if (!bootcamp) {
+            console.error(`[Bootcamp Delete] Not found: ${bootcampId}`);
             return res.status(404).json({
                 success: false,
                 message: 'Bootcamp not found'
             })
-
         }
 
+        // Cleanup: remove this bootcamp from any teachers
+        await User.updateMany(
+            { role: 'teacher', teacherBootcampIds: bootcampId },
+            { $pull: { teacherBootcampIds: bootcampId } }
+        );
+
+        console.log(`[Bootcamp Delete] Successfully deleted: ${bootcampId}`);
         res.status(200).json({
             success: true,
             message: 'Bootcamp deleted successfully',
             data: bootcamp
         })
     } catch (error) {
+        console.error(`[Bootcamp Delete] Error: ${error.message}`);
         res.status(500).json({
             success: false,
             message: error.message
