@@ -18,7 +18,7 @@ export async function getKpis(req, res) {
                 {
                   $and: [
                     { $eq: ["$role", "student"] },
-                    { $eq: ["$studentStatus", "enrolled"] },
+                    { $in: ["$studentStatus", ["enrolled", "active", "Active"]] },
                   ],
                 },
                 1,
@@ -33,7 +33,7 @@ export async function getKpis(req, res) {
                 {
                   $and: [
                     { $eq: ["$role", "teacher"] },
-                    { $eq: ["$teacherStatus", "active"] },
+                    { $in: ["$teacherStatus", ["active", "Active", "enrolled"]] },
                   ],
                 },
                 1,
@@ -77,24 +77,29 @@ export async function getKpis(req, res) {
 export async function getEnrollmentByDomains(req, res) {
   try {
     let domains = await Domain.find().lean();
-
-    for (const domain of domains) {
-      domain.students = await User.countDocuments({
+    
+    // We want to count students who are "Active". 
+    // Usually status is 'enrolled', but let's be safe and check for case-insensitive 'active' too if needed,
+    // though the model says 'enrolled'.
+    
+    const domainsWithCounts = await Promise.all(domains.map(async (domain) => {
+      const studentsCount = await User.countDocuments({
         role: "student",
-        studentStatus: "enrolled",
+        studentStatus: { $in: ["enrolled", "active", "Active"] }, // Handle potential legacy variations
         domainId: domain._id,
       });
-    }
+      return { ...domain, studentsCount };
+    }));
 
-    let totalStudents = await User.countDocuments({
+    const totalStudents = await User.countDocuments({
       role: "student",
-      studentStatus: "enrolled",
+      studentStatus: { $in: ["enrolled", "active", "Active"] },
     });
 
     res.status(200).json({
       success: true,
       message: "Enrollment by domains fetched successfully",
-      data: domains,
+      data: domainsWithCounts,
       totalStudents,
     });
   } catch (error) {

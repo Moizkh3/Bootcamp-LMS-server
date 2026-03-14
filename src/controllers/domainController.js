@@ -155,6 +155,7 @@ export async function getAllDomains(req, res) {
 
             const studentsCount = await User.countDocuments({
                 role: 'student',
+                studentStatus: { $in: ["enrolled", "active", "Active"] },
                 domainId: domain._id
             });
 
@@ -209,6 +210,7 @@ export async function getDomainById(req, res) {
 
         const studentsCount = await User.countDocuments({
             role: 'student',
+            studentStatus: { $in: ["enrolled", "active", "Active"] },
             domainId: domain._id
         });
 
