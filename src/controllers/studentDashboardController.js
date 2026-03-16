@@ -58,8 +58,14 @@ export async function getStudentStats(req, res) {
         const student = await User.findById(studentId);
         if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
+        const allSubmissions = await Submission.find({ student: studentId });
+        const submittedAssignmentIds = allSubmissions.map(sub => sub.assignment);
+
         const assignmentQuery = {
-            status: { $in: ['published', 'Active'] }
+            $or: [
+                { status: { $in: ['published', 'Active'] } },
+                { _id: { $in: submittedAssignmentIds } }
+            ]
         };
 
         if (student.studentBootcampId) {
@@ -67,18 +73,26 @@ export async function getStudentStats(req, res) {
         }
 
         if (student.domainId) {
-            assignmentQuery.$or = [
-                { domain: new mongoose.Types.ObjectId(student.domainId) },
-                { domain: { $exists: false } },
-                { domain: null }
+            const domainFilter = {
+                $or: [
+                    { domain: new mongoose.Types.ObjectId(student.domainId) },
+                    { domain: { $exists: false } },
+                    { domain: null }
+                ]
+            };
+
+            assignmentQuery.$and = [
+                {
+                    $or: [
+                        { $and: [{ status: { $in: ['published', 'Active'] } }, domainFilter] },
+                        { _id: { $in: submittedAssignmentIds } }
+                    ]
+                }
             ];
-        } else {
-             // If student has no domain, don't filter by domain (shows all in bootcamp)
-             // or if we want to be safe, we can add the check here too
+            delete assignmentQuery.$or;
         }
 
         const totalAssignments = await Assignment.countDocuments(assignmentQuery);
-        const allSubmissions = await Submission.find({ student: studentId });
         
         // Calculate Average Grade from graded submissions
         const gradedSubmissions = allSubmissions.filter(sub => sub.status === 'graded');
@@ -125,8 +139,14 @@ export async function getStudentAssignments(req, res) {
         const student = await User.findById(studentId);
         if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
+        const submissions = await Submission.find({ student: studentId });
+        const submittedAssignmentIds = submissions.map(sub => sub.assignment);
+
         const assignmentQuery = {
-            status: { $in: ['published', 'Active'] }
+            $or: [
+                { status: { $in: ['published', 'Active'] } },
+                { _id: { $in: submittedAssignmentIds } }
+            ]
         };
 
         if (student.studentBootcampId) {
@@ -134,14 +154,37 @@ export async function getStudentAssignments(req, res) {
         }
 
         if (student.domainId) {
-            // Show assignments with student's domain OR assignments with no domain (general)
-            assignmentQuery.$or = [
-                { domain: new mongoose.Types.ObjectId(student.domainId) },
-                { domain: { $exists: false } },
-                { domain: null }
+            // Filter by domain for active assignments, OR just keep the $or logic simple
+            // Actually, we should probably ensure that even for submitted assignments, they belong to the student's context?
+            // Usually, they won't have a submission for an assignment they shouldn't see.
+            
+            const domainFilter = {
+                $or: [
+                    { domain: new mongoose.Types.ObjectId(student.domainId) },
+                    { domain: { $exists: false } },
+                    { domain: null }
+                ]
+            };
+
+            // We need to be careful with nested $or. 
+            // Assignment must be (Active AND DomainMatches) OR (Submitted)
+            // Wait, if it's submitted, we definitely want to show it.
+            // If it's Active, we only want to show it if DomainMatches.
+            
+            assignmentQuery.$and = [
+                { $or: [
+                    { $and: [
+                        { status: { $in: ['published', 'Active'] } },
+                        domainFilter
+                    ]},
+                    { _id: { $in: submittedAssignmentIds } }
+                ]}
             ];
+            // Remove the top level $or since we handled it in $and
+            delete assignmentQuery.$or;
+
         } else {
-             // No domainId assigned to student, show everything in the bootcamp
+             // No domainId assigned to student, show everything in the bootcamp that is Active OR Submitted
         }
         // If student has no domain, we don't add the domain filter, 
         // so it shows all assignments in the bootcamp.
@@ -150,8 +193,6 @@ export async function getStudentAssignments(req, res) {
             .populate('domain', 'name type')
             .populate('bootcamp', 'name')
             .sort({ deadline: 1 });
-
-        const submissions = await Submission.find({ student: studentId });
 
         const assignmentsWithStatus = assignments.map(asm => {
             const submission = submissions.find(sub => sub.assignment.toString() === asm._id.toString());

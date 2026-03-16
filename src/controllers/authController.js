@@ -168,6 +168,13 @@ export const getUsers = async (req, res) => {
       filter.role = role;
     }
 
+    if (req.query.search) {
+      filter.$or = [
+        { name: { $regex: req.query.search, $options: 'i' } },
+        { email: { $regex: req.query.search, $options: 'i' } }
+      ];
+    }
+
     if (bootcampId) {
       filter.$or = [
         { studentBootcampId: new mongoose.Types.ObjectId(bootcampId) },

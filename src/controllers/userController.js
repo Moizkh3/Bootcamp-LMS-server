@@ -102,6 +102,14 @@ export async function getUsersByRole(req, res) {
         }
 
         let query = { role };
+        
+        if (req.query.search) {
+            query.$or = [
+                { name: { $regex: req.query.search, $options: 'i' } },
+                { email: { $regex: req.query.search, $options: 'i' } }
+            ];
+        }
+
         if (bootcampId) {
             if (role === 'teacher') {
                 query.teacherBootcampIds = bootcampId;

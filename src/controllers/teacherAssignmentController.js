@@ -1,8 +1,34 @@
+import mongoose from "mongoose";
 import Assignment from "../models/assignmentModel.js";
 import SubmitAssignment from "../models/submissionModel.js";
 import User from "../models/user.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
+
+// Helper function to enrich assignment with stats
+const enrichAssignment = async (assignment, userId) => {
+  const allSubmissions = await SubmitAssignment.find({ assignment: assignment._id }).select('student');
+  
+  const submissionsCount = allSubmissions.length;
+  const submittedStudents = allSubmissions.map(sub => sub.student.toString());
+  
+  const bootcampId = assignment.bootcamp?._id || assignment.bootcamp;
+  const totalStudentsCount = bootcampId ? await User.countDocuments({
+    role: "student",
+    studentBootcampId: bootcampId,
+    studentStatus: "enrolled"
+  }) : 0;
+  
+  const isSubmit = userId ? submittedStudents.includes(userId.toString()) : false;
+
+  return {
+    ...assignment.toObject(),
+    submissionsCount,
+    totalStudentsCount,
+    submittedStudents,
+    isSubmit
+  };
+};
 
 // create assignment
 export const createAssignment = async (req, res) => {
@@ -77,7 +103,9 @@ export const getAssignmentById = async (req, res) => {
       return res.status(404).json({ success: false, message: "Assignment not found" });
     }
  
-    res.status(200).json({ success: true, data: assignment });
+    const enriched = await enrichAssignment(assignment, req.user._id);
+
+    res.status(200).json({ success: true, data: enriched });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -115,28 +143,7 @@ export const getAssignments = async (req, res) => {
 
     // Enrich with submissionsCount and totalStudentsCount, plus submitted students array
     const enriched = await Promise.all(assignments.map(async (a) => {
-      // Find all submissions for this assignment
-      const allSubmissions = await SubmitAssignment.find({ assignment: a._id }).select('student');
-      
-      const submissionsCount = allSubmissions.length;
-      const submittedStudents = allSubmissions.map(sub => sub.student.toString());
-      
-      const bootcampId = a.bootcamp?._id || a.bootcamp;
-      const totalStudentsCount = bootcampId ? await User.countDocuments({
-        role: "student",
-        studentBootcampId: bootcampId,
-        studentStatus: "enrolled"
-      }) : 0;
-      
-      const isSubmit = submittedStudents.includes(req.user._id.toString());
-
-      return {
-        ...a.toObject(),
-        submissionsCount,
-        totalStudentsCount,
-        submittedStudents,
-        isSubmit
-      };
+      return await enrichAssignment(a, req.user._id);
     }));
 
     res.status(200).send({
@@ -182,10 +189,18 @@ export const updatedAssignment = async (req, res) => {
     Object.assign(assignment, updateData);
     await assignment.save();
 
+    // Populate the assignment for consistent response
+    const populated = await Assignment.findById(assignment._id)
+      .populate("domain", "name")
+      .populate("bootcamp", "name")
+      .populate("teacher", "name");
+
+    const enriched = await enrichAssignment(populated, req.user._id);
+
     res.status(200).send({
       success: true,
       message: "Assignment updated successfully",
-      data: assignment,
+      data: enriched,
     });
   } catch (error) {
     return res.status(500).send({
@@ -253,10 +268,18 @@ export const updateDeadline = async (req, res) => {
     assignment.deadline = new Date(deadline);
     await assignment.save();
 
+    // Populate for consistent response
+    const populated = await Assignment.findById(assignment._id)
+       .populate("domain", "name")
+       .populate("bootcamp", "name")
+       .populate("teacher", "name");
+
+    const enriched = await enrichAssignment(populated, req.user._id);
+
     res.status(200).send({
       success: true,
       message: "Deadline updated successfully",
-      data: assignment,
+      data: enriched,
     });
   } catch (error) {
     return res.status(500).send({

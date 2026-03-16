@@ -56,7 +56,12 @@ export async function getAllBootcamps(req, res) {
 
         let filter = {};
         if (req.query.status) filter.status = req.query.status;
-        if (req.query.search) filter.name = { $regex: req.query.search, $options: 'i' };
+        if (req.query.search) {
+            filter.$or = [
+                { name: { $regex: req.query.search, $options: 'i' } },
+                { description: { $regex: req.query.search, $options: 'i' } }
+            ];
+        }
 
 
 
