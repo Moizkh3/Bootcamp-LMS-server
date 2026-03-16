@@ -4,6 +4,9 @@ import SubmitAssignment from "../models/submissionModel.js";
 import User from "../models/user.js";
 import cloudinary from "../config/cloudinary.js";
 import fs from "fs";
+import assignmentEmailQueue from "../queues/assignmentQueue.js";
+import Domain from "../models/domainSchema.js";
+import Bootcamp from "../models/bootcampModel.js";
 
 // Helper function to enrich assignment with stats
 const enrichAssignment = async (assignment, userId) => {
@@ -31,6 +34,67 @@ const enrichAssignment = async (assignment, userId) => {
 };
 
 // create assignment
+// export const createAssignment = async (req, res) => {
+//   try {
+//     const { title, description, deadline, bootcamp, domain, requiredLinks, module } = req.body;
+
+//     if (!title || !description || !deadline || !bootcamp || !domain) {
+//       return res.status(400).send({
+//         success: false,
+//         message: "All required fields are required",
+//       });
+//     }
+
+//     if (!req.user.teacherBootcampIds || req.user.teacherBootcampIds.length === 0) {
+//       return res.status(403).send({
+//         success: false,
+//         message: "You are not assigned to any bootcamp",
+//       });
+//     }
+
+//     const deadlineDate = new Date(deadline);
+//     if (deadlineDate <= new Date()) {
+//       return res.status(400).send({
+//         success: false,
+//         message: "Deadline cannot be in the past",
+//       });
+//     }
+
+//     let documentUrl = "";
+//     if (req.file) {
+//       const result = await cloudinary.uploader.upload(req.file.path, {
+//         folder: "bootcamp-submissions",
+//       });
+//       documentUrl = result.secure_url;
+//       fs.unlinkSync(req.file.path);
+//     }
+
+//     const assignment = await Assignment.create({
+//       title,
+//       description,
+//       documentUrl,
+//       domain: domain,
+//       bootcamp: bootcamp,
+//       deadline: deadlineDate,
+//       teacher: req.user._id,
+//       module: module || "N/A",
+//       requiredLinks: requiredLinks ? (Array.isArray(requiredLinks) ? requiredLinks : JSON.parse(requiredLinks)) : ["frontendGithubUrl"],
+//     });
+
+//     res.status(201).send({
+//       success: true,
+//       message: "Assignment created successfully",
+//       data: assignment,
+//     });
+//   } catch (error) {
+//     return res.status(500).send({
+//       success: false,
+//       message: error.message,
+//     });
+//   }
+// };
+
+//adding radis for email
 export const createAssignment = async (req, res) => {
   try {
     const { title, description, deadline, bootcamp, domain, requiredLinks, module } = req.body;
@@ -77,6 +141,36 @@ export const createAssignment = async (req, res) => {
       module: module || "N/A",
       requiredLinks: requiredLinks ? (Array.isArray(requiredLinks) ? requiredLinks : JSON.parse(requiredLinks)) : ["frontendGithubUrl"],
     });
+
+    try {
+      // Domain aur Bootcamp names fetch karo email context ke liye
+      const [domainDoc, bootcampDoc] = await Promise.all([
+        Domain.findById(domain).select("name"),
+        Bootcamp.findById(bootcamp).select("name"),
+      ]);
+
+      await assignmentEmailQueue.add(
+        "send-assignment-emails",   // job naam
+        {
+          assignmentId: assignment._id.toString(),
+          domainId: domain,
+          bootcampId: bootcamp,
+          assignmentTitle: title,
+          description,
+          deadline: deadlineDate,
+          module: module || "N/A",
+          teacherName: req.user.name,
+          domainName: domainDoc?.name || "N/A",
+          bootcampName: bootcampDoc?.name || "N/A",
+        },
+        { jobId: `assignment-${assignment._id}` } // duplicate job avoid
+      );
+
+      console.log(`📬 Email job queued for assignment: ${title}`);
+    } catch (queueErr) {
+      // Queue fail hone par assignment create rukna nahi chahiye
+      console.error("⚠️ Failed to queue email job:", queueErr.message);
+    }
 
     res.status(201).send({
       success: true,

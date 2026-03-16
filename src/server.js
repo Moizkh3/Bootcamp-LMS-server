@@ -22,6 +22,10 @@ import teacherRouter from "./routes/teacherRoutes.js";
 import progressRouter from "./routes/progressRouter.js";
 import announcementRouter from "./routes/announcementRouter.js";
 import notificationRouter from "./routes/notificationRouter.js";
+
+// Start Workers
+import "./workers/assignmentEmailWorker.js";
+import "./workers/studentWelcomeWorker.js";
 const app = express();
 
 const corsOptions = {

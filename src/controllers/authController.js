@@ -9,6 +9,7 @@ dotenv.config();
 import sendEmail from "../utils/sendMail.js";
 import utils from "../models/utilsSchema.js";
 import XLSX from "xlsx";
+import studentWelcomeQueue from "../queues/studentWelcomeQueue.js";
 
 // Helper: parse CSV/Excel buffer into array of objects
 function excelBufferToArray(buffer) {
@@ -675,6 +676,108 @@ export const register = async (req, res) => {
 };
 
 // ─── BULK REGISTER STUDENTS FROM CSV/EXCEL ───────────────────────────────────
+// export const registerBulkUsers = async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "No file uploaded" });
+//     }
+
+//     let users = excelBufferToArray(req.file.buffer);
+
+//     if (!users || users.length === 0) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "No users found in the file" });
+//     }
+
+//     let utilDoc = await utils.findOne();
+//     if (!utilDoc) {
+//       utilDoc = new utils({ rollNo: 1000 });
+//     }
+
+//     const { bootcampId, domainId } = req.body;
+
+//     if (!bootcampId || !domainId) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "bootcampId and domainId are required",
+//       });
+//     }
+
+//     const rawPasswords = [];
+//     const usersToInsert = [];
+//     for (let user of users) {
+//       utilDoc.rollNo = utilDoc.rollNo + 1;
+      
+//       const genPassword = "BMS@" + Math.floor(1000 + Math.random() * 9000).toString();
+//       const hashedPassword = await bcrypt.hash(genPassword, 10);
+//       rawPasswords.push(genPassword);
+
+//       usersToInsert.push({
+//         name: user.name || user.Name,
+//         email: user.email || user.Email,
+//         password: hashedPassword,
+//         rollNo: utilDoc.rollNo,
+//         domainId,
+//         role: "student",
+//         studentStatus: "enrolled",
+//         studentBootcampId: bootcampId,
+//         isFirstLogin: true,
+//       });
+//     }
+
+//     const newUsers = await User.create(usersToInsert);
+
+//     await User.populate(newUsers, [
+//       { path: "studentBootcampId", select: "name" },
+//       { path: "domainId", select: "name" },
+//     ]);
+
+//     await utilDoc.save();
+
+//     // Send welcome emails
+//     for (let i = 0; i < newUsers.length; i++) {
+//       let user = newUsers[i];
+//       let genPassword = rawPasswords[i];
+//       try {
+//         await sendEmail({
+//           to: user.email,
+//           subject: "Welcome to the Bootcamp!",
+//           template: "student-wellcome-email",
+//           context: {
+//             name: user.name,
+//             email: user.email,
+//             password: genPassword,
+//             bootcampName:
+//               user.role === "student"
+//                 ? user.studentBootcampId?.name || "Assigned Bootcamp"
+//                 : user.teacherBootcampIds?.map(b => b.name).join(", ") || "Assigned Bootcamp",
+//             domainName:
+//               user.role === "student"
+//                 ? user.domainId?.name || "General"
+//                 : user.teacherDomainIds?.map(d => d.name).join(", ") || "General",
+//             loginLink: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
+//           },
+//         });
+//       } catch (emailErr) {
+//         console.error(
+//           `Failed to send email to ${user.email}:`,
+//           emailErr.message,
+//         );
+//       }
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: `${newUsers.length} student(s) registered successfully and welcome emails sent`,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 export const registerBulkUsers = async (req, res) => {
   try {
     if (!req.file) {
@@ -709,7 +812,7 @@ export const registerBulkUsers = async (req, res) => {
     const usersToInsert = [];
     for (let user of users) {
       utilDoc.rollNo = utilDoc.rollNo + 1;
-      
+
       const genPassword = "BMS@" + Math.floor(1000 + Math.random() * 9000).toString();
       const hashedPassword = await bcrypt.hash(genPassword, 10);
       rawPasswords.push(genPassword);
@@ -737,35 +840,27 @@ export const registerBulkUsers = async (req, res) => {
     await utilDoc.save();
 
     // Send welcome emails
-    for (let i = 0; i < newUsers.length; i++) {
-      let user = newUsers[i];
-      let genPassword = rawPasswords[i];
-      try {
-        await sendEmail({
-          to: user.email,
-          subject: "Welcome to the Bootcamp!",
-          template: "student-wellcome-email",
-          context: {
-            name: user.name,
+    try {
+      for (let i = 0; i < newUsers.length; i++) {
+        const user = newUsers[i];
+        const genPassword = rawPasswords[i];
+
+        await studentWelcomeQueue.add(
+          "send-welcome-email",
+          {
             email: user.email,
+            name: user.name,
             password: genPassword,
-            bootcampName:
-              user.role === "student"
-                ? user.studentBootcampId?.name || "Assigned Bootcamp"
-                : user.teacherBootcampIds?.map(b => b.name).join(", ") || "Assigned Bootcamp",
-            domainName:
-              user.role === "student"
-                ? user.domainId?.name || "General"
-                : user.teacherDomainIds?.map(d => d.name).join(", ") || "General",
+            bootcampName: user.studentBootcampId?.name || "Assigned Bootcamp",
+            domainName: user.domainId?.name || "General",
             loginLink: `${process.env.FRONTEND_URL || "http://localhost:5173"}/login`,
           },
-        });
-      } catch (emailErr) {
-        console.error(
-          `Failed to send email to ${user.email}:`,
-          emailErr.message,
+          { jobId: `welcome-${user._id}` }
         );
       }
+      console.log(`📬 ${newUsers.length} welcome email jobs queued`);
+    } catch (queueErr) {
+      console.error("⚠️ Failed to queue welcome emails:", queueErr.message);
     }
 
     res.status(201).json({
