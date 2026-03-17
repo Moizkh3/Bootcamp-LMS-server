@@ -7,6 +7,7 @@ import fs from "fs";
 import assignmentEmailQueue from "../queues/assignmentQueue.js";
 import Domain from "../models/domainSchema.js";
 import Bootcamp from "../models/bootcampModel.js";
+import { sendNotificationToBootcamp, sendNotificationToUser } from "../utils/sendNotification.js";
 
 // Helper function to enrich assignment with stats
 const enrichAssignment = async (assignment, userId) => {
@@ -171,6 +172,13 @@ export const createAssignment = async (req, res) => {
       // Queue fail hone par assignment create rukna nahi chahiye
       console.error("⚠️ Failed to queue email job:", queueErr.message);
     }
+    sendNotificationToBootcamp({
+      bootcampId: bootcamp,
+      domainId: domain,
+      title: "New Assignment",
+      message: `"${title}" has been posted. Deadline: ${deadlineDate.toLocaleDateString()}`,
+      type: "assignment",
+    });
 
     res.status(201).send({
       success: true,
@@ -369,6 +377,13 @@ export const updateDeadline = async (req, res) => {
        .populate("teacher", "name");
 
     const enriched = await enrichAssignment(populated, req.user._id);
+    sendNotificationToBootcamp({
+      bootcampId: assignment.bootcamp,
+      domainId: assignment.domain,
+      title: "Deadline Updated",
+      message: `Deadline for "${assignment.title}" changed to ${new Date(deadline).toLocaleDateString()}`,
+      type: "deadline",
+    });
 
     res.status(200).send({
       success: true,
@@ -429,6 +444,19 @@ export const reviewSubmission = async (req, res) => {
     submission.grade = grade;
     submission.reviewedAt = new Date();
     await submission.save();
+
+    const statusMessages = {
+      "graded": `Your assignment "${submission.assignment.title}" has been graded${grade ? `: ${grade}` : ""}`,
+      "re-submit": `Please re-submit your assignment "${submission.assignment.title}"`,
+      "under-review": `Your assignment "${submission.assignment.title}" is under review`,
+    };
+
+    sendNotificationToUser({
+      userId: submission.student,
+      title: status === "graded" ? "Assignment Graded" : status === "re-submit" ? "Re-submission Required" : "Under Review",
+      message: statusMessages[status],
+      type: "feedback",
+    });
 
     res.status(200).send({
       success: true,

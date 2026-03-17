@@ -31,7 +31,7 @@ export const createAnnouncement = async (req, res) => {
                 bootcampId,
                 title: "New Announcement",
                 message: title,
-                type: "assignment",
+                type: "announcement",
             });
         }
 
