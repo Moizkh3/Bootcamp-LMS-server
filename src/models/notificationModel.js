@@ -13,12 +13,6 @@ const notificationSchema = new mongoose.Schema(
        default: null,
     },
 
-    domainId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Domain",
-       default: null,
-    },
-
     title: {
       type: String,
       required: true,
@@ -31,13 +25,8 @@ const notificationSchema = new mongoose.Schema(
 
     type: {
       type: String,
-      enum: ["assignment", "deadline", "feedback", "announcement"],
+      enum: ["assignment", "deadline", "feedback"],
       required: true,
-    },
-
-    isGlobal: {
-      type: Boolean,
-      default: false,
     },
 
     isRead: {

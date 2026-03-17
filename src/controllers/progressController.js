@@ -2,7 +2,6 @@ import Progress from "../models/dailyProgressModel.js";
 import User from "../models/user.js";
 import mongoose from "mongoose";
 import fs from 'fs';
-import { sendNotificationToUser } from "../utils/sendNotification.js";
 
 export const submitProgress = async (req, res) => {
   try {
@@ -173,13 +172,6 @@ export const reviewStandup = async (req, res) => {
     
     await progress.save();
     console.log(`[ReviewStandup] Successfully updated ID: ${id}`);
-
-    sendNotificationToUser({
-      userId: progress.studentId,
-      title: "Standup Reviewed",
-      message: `Your standup has been reviewed${grade ? ` - Grade: ${grade}` : ""}`,
-      type: "feedback",
-    });
 
     res.status(200).json({
       success: true,

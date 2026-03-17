@@ -3,7 +3,6 @@ import Progress from "../models/dailyProgressModel.js";
 import Submission from "../models/submissionModel.js";
 import Assignment from "../models/assignmentModel.js";
 import mongoose from "mongoose";
-import { sendNotificationToUser } from "../utils/sendNotification.js";
 
 // Fetch students assigned to the teacher's bootcamps
 export const getTeacherStudents = async (req, res) => {
@@ -114,13 +113,6 @@ export const giveStandupFeedback = async (req, res) => {
         message: "Standup record not found",
       });
     }
-
-    sendNotificationToUser({
-      userId: progress.studentId,
-      title: "Standup Feedback",
-      message: `You received feedback on your standup${grade ? ` - Grade: ${grade}` : ""}`,
-      type: "feedback",
-    });
 
     res.status(200).json({
       success: true,
